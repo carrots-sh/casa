@@ -1,7 +1,7 @@
 name: release
 
 # Date-based versioning (Stripe-style): the version IS the release date.
-# Tag layout vYYYY.MMDD.N — year . zero-padded month+day . same-day counter.
+# Tag layout vYYYY.MM.DD-N — date, then a same-day counter (always present).
 on:
   workflow_dispatch:
 
@@ -24,17 +24,15 @@ jobs:
         id: tag
         run: |
           set -eu
-          YEAR=$(date -u +%Y)
-          MMDD=$(date -u +%m%d)
-          BASE="v${YEAR}.${MMDD}"
+          BASE="v$(date -u +%Y.%m.%d)"
           # Next same-day counter: max existing + 1, else 0.
           N=0
-          for t in $(git tag --list "${BASE}.*"); do
-            c=${t##*.}
+          for t in $(git tag --list "${BASE}-*"); do
+            c=${t##*-}
             case "$c" in ''|*[!0-9]*) continue ;; esac
             [ "$c" -ge "$N" ] && N=$((c + 1))
           done
-          TAG="${BASE}.${N}"
+          TAG="${BASE}-${N}"
           echo "date version: $TAG"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 

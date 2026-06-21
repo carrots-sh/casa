@@ -45,9 +45,9 @@ outdated cleanly).
 ## Versioning
 
 casa uses **date-based versioning** (Stripe-style): the version *is* the release
-date, tagged `vYYYY.MMDD.N` — year, zero-padded month+day, and a same-day counter.
-For example `v2026.0621.0`, then `v2026.0621.1` for a second release the same day,
-`v2026.0622.0` the next. `casa --version` reports it as `2026.0621.0`. Releases are
+date, tagged `vYYYY.MM.DD-N` — the date plus an always-present same-day counter.
+For example `v2026.06.21-0`, then `v2026.06.21-1` for a second release the same day,
+`v2026.06.22-0` the next. `casa --version` reports it as `2026.06.21-0`. Releases are
 cut from `main` via the `release` workflow (`gh workflow run release.yml -R carrots-sh/casa`).
 See [CHANGELOG.md](CHANGELOG.md).
 
