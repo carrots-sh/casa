@@ -1,0 +1,77 @@
+version: 2
+
+project_name: casa
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: casa
+    main: ./cmd/casa
+    binary: casa
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .ShortCommit }}
+
+archives:
+  - id: casa
+    ids: [casa]
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+nfpms:
+  - id: casa
+    ids: [casa]
+    package_name: casa
+    homepage: https://github.com/carrots-sh/casa
+    maintainer: carrots-sh <hi@carrots.sh>
+    description: Interactive package manager front-end that keeps your Brewfile in sync.
+    license: MIT
+    formats: [deb, rpm]
+    bindir: /usr/bin
+
+brews:
+  - name: casa
+    ids: [casa]
+    repository:
+      owner: carrots-sh
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: https://github.com/carrots-sh/casa
+    description: Interactive package manager front-end that keeps your Brewfile in sync.
+    license: MIT
+    install: |
+      bin.install "casa"
+    test: |
+      assert_match "casa version", shell_output("#{bin}/casa --version")
+    caveats: |
+      casa drives brew, and optionally go, uv, npm, and cargo. Install whichever
+      of those you use; casa shells out to them on demand.
+
+checksum:
+  name_template: "checksums.txt"
+
+release:
+  github:
+    owner: carrots-sh
+    name: casa
+  prerelease: false
+  name_template: "{{ .Tag }}"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
