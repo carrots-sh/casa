@@ -50,6 +50,10 @@ brews:
     homepage: https://github.com/carrots-sh/casa
     description: Interactive package manager front-end that keeps your Brewfile in sync.
     license: MIT
+    dependencies:
+      - name: chezmoi
+      - name: git
+        type: optional
     install: |
       bin.install "casa"
     test: |
