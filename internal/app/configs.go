@@ -37,7 +37,7 @@ func EditConfig(name string) error {
 		if len(managed) == 0 {
 			return fmt.Errorf("no managed files yet")
 		}
-		if sel, err = ui.Select("Edit which config?", managed); err != nil || sel == "" {
+		if sel, err = ui.Select("edit which config?", managed); err != nil || sel == "" {
 			return err
 		}
 	}
@@ -56,7 +56,7 @@ func TrackFile(path string) error {
 	}
 	if path == "" {
 		var err error
-		if path, err = ui.Input("Path of the file to start managing"); err != nil || path == "" {
+		if path, err = ui.Input("path of the file to start managing"); err != nil || path == "" {
 			return err
 		}
 	}
@@ -78,7 +78,7 @@ func UntrackFile(path string) error {
 		if err != nil {
 			return err
 		}
-		sel, err := ui.Select("Stop managing which file? (it stays on disk)", managed)
+		sel, err := ui.Select("stop managing which file? (it stays on disk)", managed)
 		if err != nil || sel == "" {
 			return err
 		}

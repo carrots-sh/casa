@@ -7,14 +7,14 @@ import (
 
 var configsCmd = &cobra.Command{
 	Use:   "configs",
-	Short: "Manage your dotfiles",
+	Short: "manage your dotfiles",
 }
 
 func init() {
 	configsCmd.AddCommand(
 		&cobra.Command{
 			Use:   "edit [name]",
-			Short: "Pick and edit a config (encrypted ones handled transparently)",
+			Short: "pick and edit a config (encrypted ones handled transparently)",
 			Args:  cobra.MaximumNArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				name := ""
@@ -26,7 +26,7 @@ func init() {
 		},
 		&cobra.Command{
 			Use:   "track [path]",
-			Short: "Start managing an existing file",
+			Short: "start managing an existing file",
 			Args:  cobra.MaximumNArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				path := ""
@@ -38,7 +38,7 @@ func init() {
 		},
 		&cobra.Command{
 			Use:   "untrack [path]",
-			Short: "Stop managing a file (keeps it on disk)",
+			Short: "stop managing a file (keeps it on disk)",
 			Args:  cobra.MaximumNArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				path := ""
@@ -50,7 +50,7 @@ func init() {
 		},
 		&cobra.Command{
 			Use:   "list",
-			Short: "List managed files",
+			Short: "list managed files",
 			RunE:  func(cmd *cobra.Command, args []string) error { return app.ListConfigs() },
 		},
 	)

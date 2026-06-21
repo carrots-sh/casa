@@ -7,14 +7,14 @@ import (
 
 var machineCmd = &cobra.Command{
 	Use:   "machine",
-	Short: "Set up, sync, and inspect this machine",
+	Short: "set up, sync, and inspect this machine",
 }
 
 func init() {
 	machineCmd.AddCommand(
 		&cobra.Command{
 			Use:   "setup [repo]",
-			Short: "Provision this machine from your dotfiles repo",
+			Short: "provision this machine from your dotfiles repo",
 			Args:  cobra.MaximumNArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				repo := ""
@@ -26,12 +26,12 @@ func init() {
 		},
 		&cobra.Command{
 			Use:   "sync",
-			Short: "Pull your repo and apply it here",
+			Short: "pull your repo and apply it here",
 			RunE:  func(cmd *cobra.Command, args []string) error { return app.Sync() },
 		},
 		&cobra.Command{
 			Use:   "save [message]",
-			Short: "Commit + push your changes",
+			Short: "commit + push your changes",
 			Args:  cobra.MaximumNArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				msg := ""
@@ -43,22 +43,22 @@ func init() {
 		},
 		&cobra.Command{
 			Use:   "status",
-			Short: "Show what's changed, behind, or outdated",
+			Short: "show what's changed, behind, or outdated",
 			RunE:  func(cmd *cobra.Command, args []string) error { return app.Status() },
 		},
 		&cobra.Command{
 			Use:   "context",
-			Short: "Change this machine's setup answers (contexts) and re-apply",
+			Short: "change this machine's setup answers (contexts) and re-apply",
 			RunE:  func(cmd *cobra.Command, args []string) error { return app.Context() },
 		},
 		&cobra.Command{
 			Use:   "doctor",
-			Short: "Health check",
+			Short: "health check",
 			RunE:  func(cmd *cobra.Command, args []string) error { return app.Doctor() },
 		},
 		&cobra.Command{
 			Use:   "info",
-			Short: "Machine + repo basics",
+			Short: "machine + repo basics",
 			RunE:  func(cmd *cobra.Command, args []string) error { return app.Info() },
 		},
 	)

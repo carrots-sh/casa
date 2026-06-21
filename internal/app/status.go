@@ -35,7 +35,7 @@ func computeStatus() statusInfo {
 
 func machineName() string {
 	if h, err := os.Hostname(); err == nil && h != "" {
-		return strings.TrimSuffix(h, ".local")
+		return strings.ToLower(strings.TrimSuffix(h, ".local"))
 	}
 	return "this machine"
 }

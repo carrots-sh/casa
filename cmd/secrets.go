@@ -7,14 +7,14 @@ import (
 
 var secretsCmd = &cobra.Command{
 	Use:   "secrets",
-	Short: "Manage encrypted files",
+	Short: "manage encrypted files",
 }
 
 func init() {
 	secretsCmd.AddCommand(
 		&cobra.Command{
 			Use:   "add [path]",
-			Short: "Encrypt and start managing a file",
+			Short: "encrypt and start managing a file",
 			Args:  cobra.MaximumNArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				path := ""
@@ -26,12 +26,12 @@ func init() {
 		},
 		&cobra.Command{
 			Use:   "edit",
-			Short: "Pick a secret, decrypt, edit, re-encrypt",
+			Short: "pick a secret, decrypt, edit, re-encrypt",
 			RunE:  func(cmd *cobra.Command, args []string) error { return app.EditSecret() },
 		},
 		&cobra.Command{
 			Use:   "list",
-			Short: "List encrypted files",
+			Short: "list encrypted files",
 			RunE:  func(cmd *cobra.Command, args []string) error { return app.ListSecrets() },
 		},
 	)

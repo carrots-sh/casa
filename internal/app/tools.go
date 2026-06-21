@@ -14,22 +14,22 @@ import (
 func AddTool(mgr, name string) error {
 	var err error
 	if mgr == "" {
-		if mgr, err = ui.Select("Which package manager?", pm.Managers); err != nil || mgr == "" {
+		if mgr, err = ui.Select("which package manager?", pm.Managers); err != nil || mgr == "" {
 			return err
 		}
 	}
 	if name == "" {
-		if name, err = ui.Input("Package name (" + mgr + ")"); err != nil || name == "" {
+		if name, err = ui.Input("package name (" + mgr + ")"); err != nil || name == "" {
 			return err
 		}
 	}
-	fmt.Printf("Installing %s via %s...\n", name, mgr)
+	fmt.Printf("installing %s via %s...\n", name, mgr)
 	if err := pm.Install(mgr, name); err != nil {
 		return fmt.Errorf("install failed: %w", err)
 	}
 	b := bf()
 	if !b.Configured() {
-		fmt.Printf("✓ installed %s (no Brewfile configured, so not recorded)\n", name)
+		fmt.Printf("✓ installed %s (no brewfile configured, so not recorded)\n", name)
 		return nil
 	}
 	if err := b.Add(mgr, name); err != nil {
@@ -57,18 +57,18 @@ func RemoveTools() error {
 		}
 	}
 	if len(labels) == 0 {
-		return fmt.Errorf("nothing recorded in the Brewfile")
+		return fmt.Errorf("nothing recorded in the brewfile")
 	}
-	sel, err := ui.MultiSelect("Remove which? (space to pick, enter to confirm)", labels)
+	sel, err := ui.MultiSelect("remove which? (space to pick, enter to confirm)", labels)
 	if err != nil || len(sel) == 0 {
 		return err
 	}
 	b := bf()
 	for _, l := range sel {
 		t := byLabel[l]
-		fmt.Printf("Removing %s (%s)...\n", t.name, t.mgr)
+		fmt.Printf("removing %s (%s)...\n", t.name, t.mgr)
 		if err := pm.Uninstall(t.mgr, t.name); err != nil {
-			fmt.Printf("  (uninstall errored: %v; removing from Brewfile anyway)\n", err)
+			fmt.Printf("  (uninstall errored: %v; removing from brewfile anyway)\n", err)
 		}
 		if b.Configured() {
 			_ = b.Remove(t.mgr, t.name)
@@ -86,7 +86,7 @@ func RemoveTools() error {
 func UpdateTools() error {
 	items := pm.Outdated()
 	items = append(items, "uv    (upgrade all uv tools)", "cargo (upgrade all)")
-	sel, err := ui.MultiSelect("Update which? (space to pick, enter to confirm)", items)
+	sel, err := ui.MultiSelect("update which? (space to pick, enter to confirm)", items)
 	if err != nil || len(sel) == 0 {
 		return err
 	}
@@ -97,7 +97,7 @@ func UpdateTools() error {
 		}
 		switch f[0] {
 		case "uv", "cargo":
-			fmt.Printf("Upgrading all %s packages...\n", f[0])
+			fmt.Printf("upgrading all %s packages...\n", f[0])
 			if err := pm.UpgradeAll(f[0]); err != nil {
 				fmt.Printf("  %v\n", err)
 			}
@@ -105,7 +105,7 @@ func UpdateTools() error {
 			if len(f) < 2 {
 				continue
 			}
-			fmt.Printf("Upgrading %s (%s)...\n", f[1], f[0])
+			fmt.Printf("upgrading %s (%s)...\n", f[1], f[0])
 			if err := pm.Upgrade(f[0], f[1]); err != nil {
 				fmt.Printf("  %v\n", err)
 			}

@@ -21,11 +21,11 @@ func Setup(repo string) error {
 	}
 	if repo == "" {
 		var err error
-		if repo, err = ui.Input("Your dotfiles repo (e.g. your-username or user/repo)"); err != nil || repo == "" {
+		if repo, err = ui.Input("your dotfiles repo (e.g. your-username or user/repo)"); err != nil || repo == "" {
 			return err
 		}
 	}
-	fmt.Printf("Setting up this machine from %s...\n", repo)
+	fmt.Printf("setting up this machine from %s...\n", repo)
 	c := exec.Command("chezmoi", "init", "--apply", repo)
 	c.Stdin, c.Stdout, c.Stderr = os.Stdin, os.Stdout, os.Stderr
 	return c.Run()
@@ -36,7 +36,7 @@ func Sync() error {
 	if err := requireChezmoi(); err != nil {
 		return err
 	}
-	fmt.Println("Catching this machine up...")
+	fmt.Println("catching this machine up...")
 	if err := chez.Update(); err != nil {
 		return err
 	}
@@ -51,21 +51,21 @@ func Save(msg string) error {
 	}
 	porcelain, _ := chez.GitOut("status", "--porcelain")
 	if strings.TrimSpace(porcelain) == "" {
-		fmt.Println("Nothing to save — everything's already committed.")
+		fmt.Println("nothing to save — everything's already committed.")
 		return nil
 	}
-	fmt.Println("Changes to save:")
+	fmt.Println("changes to save:")
 	_ = chez.Git("status", "--short")
 	if msg == "" {
 		var err error
-		if msg, err = ui.Input("Describe this change"); err != nil {
+		if msg, err = ui.Input("describe this change"); err != nil {
 			return err
 		}
 		if msg == "" {
 			msg = "casa: update dotfiles"
 		}
 	}
-	ok, err := ui.Confirm("Commit + push these?")
+	ok, err := ui.Confirm("commit + push these?")
 	if err != nil || !ok {
 		return err
 	}
@@ -78,11 +78,11 @@ func Status() error {
 		return err
 	}
 	s := computeStatus()
-	fmt.Printf("Machine:           %s\n", s.machine)
-	fmt.Printf("Unsaved changes:   %d\n", s.toSave)
-	fmt.Printf("Behind your repo:  %d commit(s)\n", s.behind)
-	fmt.Printf("Local drift:       %d file(s) need apply\n", s.drift)
-	fmt.Printf("Outdated tools:    %d\n", s.updates)
+	fmt.Printf("machine:           %s\n", s.machine)
+	fmt.Printf("unsaved changes:   %d\n", s.toSave)
+	fmt.Printf("behind your repo:  %d commit(s)\n", s.behind)
+	fmt.Printf("local drift:       %d file(s) need apply\n", s.drift)
+	fmt.Printf("outdated tools:    %d\n", s.updates)
 	return nil
 }
 
@@ -91,7 +91,7 @@ func Context() error {
 	if err := requireChezmoi(); err != nil {
 		return err
 	}
-	fmt.Println("Re-running this machine's setup questions...")
+	fmt.Println("re-running this machine's setup questions...")
 	c := exec.Command("chezmoi", "init", "--prompt")
 	c.Stdin, c.Stdout, c.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := c.Run(); err != nil {
@@ -115,8 +115,8 @@ func Info() error {
 	}
 	src, _ := chez.SourceDir()
 	managed, _ := chez.Managed()
-	fmt.Printf("Machine:  %s\n", machineName())
-	fmt.Printf("Repo:     %s\n", src)
-	fmt.Printf("Managed:  %d files\n", len(managed))
+	fmt.Printf("machine:  %s\n", machineName())
+	fmt.Printf("repo:     %s\n", src)
+	fmt.Printf("managed:  %d files\n", len(managed))
 	return nil
 }

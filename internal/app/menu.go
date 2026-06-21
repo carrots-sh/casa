@@ -15,33 +15,33 @@ func Menu() error {
 	for {
 		s := computeStatus()
 		opts := []string{
-			"Configs  · edit your dotfiles",
-			"Tools    · install, remove, update" + hint(s.updates, "updates"),
-			"Secrets  · encrypted files",
-			"Sync     · pull latest onto this machine" + hint(s.behind, "behind"),
-			"Save     · publish your changes" + hint(s.toSave, "to save"),
-			"Status   · full overview",
-			"Machine  · contexts, info, health",
-			"Quit",
+			"configs  · edit your dotfiles",
+			"tools    · install, remove, update" + hint(s.updates, "updates"),
+			"secrets  · encrypted files",
+			"sync     · pull latest onto this machine" + hint(s.behind, "behind"),
+			"save     · publish your changes" + hint(s.toSave, "to save"),
+			"status   · full overview",
+			"machine  · contexts, info, health",
+			"quit",
 		}
 		choice, err := ui.Select("casa · "+s.machine, opts)
-		if err != nil || choice == "" || strings.HasPrefix(choice, "Quit") {
+		if err != nil || choice == "" || strings.HasPrefix(choice, "quit") {
 			return err
 		}
 		switch {
-		case strings.HasPrefix(choice, "Configs"):
+		case strings.HasPrefix(choice, "configs"):
 			configsMenu()
-		case strings.HasPrefix(choice, "Tools"):
+		case strings.HasPrefix(choice, "tools"):
 			toolsMenu()
-		case strings.HasPrefix(choice, "Secrets"):
+		case strings.HasPrefix(choice, "secrets"):
 			secretsMenu()
-		case strings.HasPrefix(choice, "Sync"):
+		case strings.HasPrefix(choice, "sync"):
 			report(Sync())
-		case strings.HasPrefix(choice, "Save"):
+		case strings.HasPrefix(choice, "save"):
 			report(Save(""))
-		case strings.HasPrefix(choice, "Status"):
+		case strings.HasPrefix(choice, "status"):
 			report(Status())
-		case strings.HasPrefix(choice, "Machine"):
+		case strings.HasPrefix(choice, "machine"):
 			machineMenu()
 		}
 	}
@@ -49,18 +49,18 @@ func Menu() error {
 
 func toolsMenu() {
 	for {
-		c, err := ui.Select("Tools", []string{"Add a tool", "Remove tool(s)", "Update outdated", "List installed", "← Back"})
-		if err != nil || c == "" || c == "← Back" {
+		c, err := ui.Select("tools", []string{"add a tool", "remove tool(s)", "update outdated", "list installed", "← back"})
+		if err != nil || c == "" || c == "← back" {
 			return
 		}
 		switch c {
-		case "Add a tool":
+		case "add a tool":
 			report(AddTool("", ""))
-		case "Remove tool(s)":
+		case "remove tool(s)":
 			report(RemoveTools())
-		case "Update outdated":
+		case "update outdated":
 			report(UpdateTools())
-		case "List installed":
+		case "list installed":
 			report(ListTools())
 		}
 	}
@@ -68,18 +68,18 @@ func toolsMenu() {
 
 func configsMenu() {
 	for {
-		c, err := ui.Select("Configs", []string{"Edit a config", "Track a new file", "Untrack a file", "List managed", "← Back"})
-		if err != nil || c == "" || c == "← Back" {
+		c, err := ui.Select("configs", []string{"edit a config", "track a new file", "untrack a file", "list managed", "← back"})
+		if err != nil || c == "" || c == "← back" {
 			return
 		}
 		switch c {
-		case "Edit a config":
+		case "edit a config":
 			report(EditConfig(""))
-		case "Track a new file":
+		case "track a new file":
 			report(TrackFile(""))
-		case "Untrack a file":
+		case "untrack a file":
 			report(UntrackFile(""))
-		case "List managed":
+		case "list managed":
 			report(ListConfigs())
 		}
 	}
@@ -87,16 +87,16 @@ func configsMenu() {
 
 func secretsMenu() {
 	for {
-		c, err := ui.Select("Secrets", []string{"Edit a secret", "Add an encrypted file", "List secrets", "← Back"})
-		if err != nil || c == "" || c == "← Back" {
+		c, err := ui.Select("secrets", []string{"edit a secret", "add an encrypted file", "list secrets", "← back"})
+		if err != nil || c == "" || c == "← back" {
 			return
 		}
 		switch c {
-		case "Edit a secret":
+		case "edit a secret":
 			report(EditSecret())
-		case "Add an encrypted file":
+		case "add an encrypted file":
 			report(AddSecret(""))
-		case "List secrets":
+		case "list secrets":
 			report(ListSecrets())
 		}
 	}
@@ -104,18 +104,18 @@ func secretsMenu() {
 
 func machineMenu() {
 	for {
-		c, err := ui.Select("Machine", []string{"Set up this machine", "Change contexts", "Info", "Health check", "← Back"})
-		if err != nil || c == "" || c == "← Back" {
+		c, err := ui.Select("machine", []string{"set up this machine", "change contexts", "info", "health check", "← back"})
+		if err != nil || c == "" || c == "← back" {
 			return
 		}
 		switch c {
-		case "Set up this machine":
+		case "set up this machine":
 			report(Setup(""))
-		case "Change contexts":
+		case "change contexts":
 			report(Context())
-		case "Info":
+		case "info":
 			report(Info())
-		case "Health check":
+		case "health check":
 			report(Doctor())
 		}
 	}

@@ -28,9 +28,9 @@ func requireChezmoi() error {
 
 // offerSave asks to commit+push after a change.
 func offerSave(msg string) {
-	ok, err := ui.Confirm("Save to your repo now?")
+	ok, err := ui.Confirm("save to your repo now?")
 	if err != nil || !ok {
-		fmt.Println("Not saved. Open casa and choose Save when you're ready.")
+		fmt.Println("not saved. open casa and choose save when you're ready.")
 		return
 	}
 	if err := saveAll(msg); err != nil {
@@ -42,7 +42,7 @@ func offerSave(msg string) {
 func saveAll(msg string) error {
 	porcelain, _ := chez.GitOut("status", "--porcelain")
 	if strings.TrimSpace(porcelain) == "" {
-		fmt.Println("Nothing to save — everything's already committed.")
+		fmt.Println("nothing to save — everything's already committed.")
 		return nil
 	}
 	if err := chez.Git("add", "-A"); err != nil {
@@ -52,7 +52,7 @@ func saveAll(msg string) error {
 		return err
 	}
 	if err := chez.Git("push"); err != nil {
-		fmt.Println("Committed locally, but push failed — push later from casa → Save.")
+		fmt.Println("committed locally, but push failed — push later from casa → save.")
 		return nil
 	}
 	fmt.Println("✓ saved + pushed")

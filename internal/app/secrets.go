@@ -17,7 +17,7 @@ func AddSecret(path string) error {
 	}
 	if path == "" {
 		var err error
-		if path, err = ui.Input("Path of the file to encrypt + manage"); err != nil || path == "" {
+		if path, err = ui.Input("path of the file to encrypt + manage"); err != nil || path == "" {
 			return err
 		}
 	}
@@ -42,7 +42,7 @@ func EditSecret() error {
 	if len(enc) == 0 {
 		return fmt.Errorf("no encrypted files in this repo")
 	}
-	sel, err := ui.Select("Edit which secret?", enc)
+	sel, err := ui.Select("edit which secret?", enc)
 	if err != nil || sel == "" {
 		return err
 	}
