@@ -43,9 +43,15 @@ handled transparently; nothing destructive happens without a confirmation.
 
 ```bash
 brew install carrots-sh/tap/casa
-casa            # → "Machine" → "Set up this machine", answer the questions
-casa            # from then on: pick what you want, follow the prompts
+casa machine setup <your-github-username>   # or: casa → machine → set up this machine
+casa                                        # from then on: pick what you want
 ```
+
+`setup` takes a github **username** (→ `<user>/dotfiles`), a `user/repo`, or a full
+URL. It prefers **SSH**, falls back to **HTTPS**, and errors only if both fail.
+
+casa stores your dotfiles in **`~/.local/share/casa`** by default (override with
+`$CASA_SOURCE`). Existing `~/.local/share/chezmoi` setups keep working unchanged.
 
 ## Typed commands (optional — for scripts & muscle memory)
 

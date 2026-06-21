@@ -10,14 +10,57 @@ import (
 	"strings"
 )
 
+var srcCached string
+
+// resolve picks casa's source dir, in order:
+//  1. $CASA_SOURCE
+//  2. ~/.local/share/casa (casa's branded default) if it's a repo
+//  3. chezmoi's own configured/default source if it exists (backward-compatible)
+//  4. ~/.local/share/casa (where a fresh `casa machine setup` will clone)
+func resolve() string {
+	if srcCached != "" {
+		return srcCached
+	}
+	if v := strings.TrimSpace(os.Getenv("CASA_SOURCE")); v != "" {
+		srcCached = v
+		return srcCached
+	}
+	home, _ := os.UserHomeDir()
+	casa := filepath.Join(home, ".local", "share", "casa")
+	if _, err := os.Stat(filepath.Join(casa, ".git")); err == nil {
+		srcCached = casa
+		return srcCached
+	}
+	if o, err := exec.Command("chezmoi", "source-path").Output(); err == nil {
+		if p := strings.TrimSpace(string(o)); p != "" {
+			if _, err := os.Stat(p); err == nil {
+				srcCached = p
+				return srcCached
+			}
+		}
+	}
+	srcCached = casa
+	return srcCached
+}
+
+// SetSource overrides the resolved source dir (used after `setup` clones).
+func SetSource(dir string) { srcCached = dir }
+
+// cmd builds a chezmoi command pinned to casa's source dir. The --source flag
+// is used (not CHEZMOI_SOURCE_DIR) because some subcommands (e.g. managed)
+// ignore the env var.
+func cmd(args ...string) *exec.Cmd {
+	return exec.Command("chezmoi", append([]string{"--source", resolve()}, args...)...)
+}
+
 func run(args ...string) error {
-	c := exec.Command("chezmoi", args...)
+	c := cmd(args...)
 	c.Stdout, c.Stderr, c.Stdin = os.Stdout, os.Stderr, os.Stdin
 	return c.Run()
 }
 
 func out(args ...string) (string, error) {
-	o, err := exec.Command("chezmoi", args...).Output()
+	o, err := cmd(args...).Output()
 	return string(o), err
 }
 
@@ -27,13 +70,9 @@ func Available() bool {
 	return err == nil
 }
 
-// SourceDir returns the chezmoi source directory (the dotfiles repo).
+// SourceDir returns casa's source directory (the dotfiles repo).
 func SourceDir() (string, error) {
-	s, err := out("source-path")
-	if err != nil {
-		return "", fmt.Errorf("chezmoi source-path: %w", err)
-	}
-	return strings.TrimSpace(s), nil
+	return resolve(), nil
 }
 
 // Managed returns the managed target files (paths relative to home).
@@ -64,6 +103,9 @@ func ApplyNoScripts(paths ...string) error {
 
 // Update pulls the repo and applies (catch this machine up).
 func Update() error { return run("update") }
+
+// InitApply clones repo into casa's source dir and applies it.
+func InitApply(repo string) error { return run("init", "--apply", repo) }
 
 // Edit opens a managed file in the configured editor and applies on close.
 func Edit(homePath string) error { return run("edit", "--apply", homePath) }

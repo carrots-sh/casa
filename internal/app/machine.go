@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/carrots-sh/casa/internal/chez"
@@ -11,24 +12,78 @@ import (
 	"github.com/carrots-sh/casa/internal/ui"
 )
 
-// Setup provisions a new machine from a dotfiles repo (chezmoi init --apply).
-func Setup(repo string) error {
+// Setup provisions a new machine from a dotfiles repo. It accepts a github
+// username (→ <user>/dotfiles), a user/repo, or a full URL; prefers SSH and
+// falls back to HTTPS; and clones into casa's branded source dir (~/.local/share/casa).
+func Setup(arg string) error {
 	if !chez.Available() {
 		return fmt.Errorf("install chezmoi first: brew install chezmoi")
 	}
-	if repo == "" {
-		repo = config.Load().Setup.Repo
+	if arg == "" {
+		arg = config.Load().Setup.Repo
 	}
-	if repo == "" {
+	if arg == "" {
 		var err error
-		if repo, err = ui.Input("your dotfiles repo (e.g. your-username or user/repo)"); err != nil || repo == "" {
+		if arg, err = ui.Input("github username, user/repo, or repo url"); err != nil || arg == "" {
 			return err
 		}
 	}
-	fmt.Printf("setting up this machine from %s...\n", repo)
-	c := exec.Command("chezmoi", "init", "--apply", repo)
-	c.Stdin, c.Stdout, c.Stderr = os.Stdin, os.Stdout, os.Stderr
-	return c.Run()
+
+	// pin the source dir (default: casa's branded location, overridable via $CASA_SOURCE)
+	target := os.Getenv("CASA_SOURCE")
+	if target == "" {
+		home, _ := os.UserHomeDir()
+		target = filepath.Join(home, ".local", "share", "casa")
+	}
+	chez.SetSource(target)
+
+	url, err := pickRepoURL(arg)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("setting up this machine from %s\n  into %s ...\n", url, target)
+	return chez.InitApply(url)
+}
+
+// pickRepoURL resolves arg to a reachable clone URL, preferring SSH then HTTPS.
+func pickRepoURL(arg string) (string, error) {
+	ssh, https := repoURLs(arg)
+	if ssh == https { // explicit full URL — no fallback to try
+		if reachable(ssh) {
+			return ssh, nil
+		}
+		return "", fmt.Errorf("could not reach %s", ssh)
+	}
+	if reachable(ssh) {
+		return ssh, nil
+	}
+	fmt.Println("ssh not available, trying https...")
+	if reachable(https) {
+		return https, nil
+	}
+	return "", fmt.Errorf("could not reach the repo over ssh or https (checked %s and %s)", ssh, https)
+}
+
+// repoURLs derives the SSH and HTTPS forms from a username, user/repo, or URL.
+func repoURLs(arg string) (ssh, https string) {
+	switch {
+	case strings.Contains(arg, "://") || strings.HasPrefix(arg, "git@"):
+		return arg, arg
+	case strings.Contains(arg, "/"):
+		return "git@github.com:" + arg + ".git", "https://github.com/" + arg + ".git"
+	default:
+		return "git@github.com:" + arg + "/dotfiles.git", "https://github.com/" + arg + "/dotfiles.git"
+	}
+}
+
+// reachable tests a clone URL without prompting (no password/host prompts hang).
+func reachable(url string) bool {
+	c := exec.Command("git", "ls-remote", url)
+	c.Env = append(os.Environ(),
+		"GIT_TERMINAL_PROMPT=0",
+		"GIT_SSH_COMMAND=ssh -oBatchMode=yes -oConnectTimeout=8 -oStrictHostKeyChecking=accept-new",
+	)
+	return c.Run() == nil
 }
 
 // Sync pulls the repo and applies it here.
