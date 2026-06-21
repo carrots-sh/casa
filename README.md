@@ -1,10 +1,10 @@
 # casa
 
-Interactive package-manager front-end that keeps your **Brewfile** in sync.
+An easy, **interactive** front-end for [chezmoi](https://chezmoi.io). Manage your
+dotfiles, secrets, and tools from one friendly menu — nothing to memorize.
 
-`casa` wraps `brew`, `cask`, `tap`, `go`, `uv`, `npm`, and `cargo` behind one
-command. Install or remove something through `casa` and it records the change in
-your chezmoi-managed `~/.Brewfile` automatically — no `brew bundle dump`, no drift.
+casa never reimplements chezmoi; it shells out to it, so your dotfiles repo stays
+the single source of truth and works with or without casa.
 
 ## Install
 
@@ -12,44 +12,72 @@ your chezmoi-managed `~/.Brewfile` automatically — no `brew bundle dump`, no d
 brew install carrots-sh/tap/casa
 ```
 
-## Usage
+## Use it
+
+Just run:
 
 ```bash
-casa            # menu: add / remove / update
-casa add        # pick a manager → name → install + record
-casa remove     # pick from ALL recorded packages (any manager) → uninstall + de-record
-casa update     # pick from outdated packages → upgrade one / many / all
+casa
 ```
 
-Non-interactive forms also work:
+You get a status-aware menu — it tells you what needs doing (unsaved changes,
+updates available, machine behind your repo) and walks you through everything:
+
+```
+casa · your-machine
+
+> Configs  · edit your dotfiles
+  Tools    · install, remove, update      (5 updates)
+  Secrets  · encrypted files
+  Sync     · pull latest onto this machine
+  Save     · publish your changes         (2 to save)
+  Status   · full overview
+  Machine  · contexts, info, health
+  Quit
+```
+
+Every step is a list or a prompt — pick, confirm, done. Encrypted files are
+handled transparently; nothing destructive happens without a confirmation.
+
+### First five minutes
 
 ```bash
-casa add uv ruff
-casa remove brew ripgrep
+brew install carrots-sh/tap/casa
+casa            # → "Machine" → "Set up this machine", answer the questions
+casa            # from then on: pick what you want, follow the prompts
 ```
 
-### How sync works
+## Typed commands (optional — for scripts & muscle memory)
 
-`casa` edits the Brewfile **template** in your chezmoi source (`dot_Brewfile.tmpl`),
-inserting each entry just before the matching `# casa:<manager>` anchor so it lands
-in the OS-correct section, then runs `chezmoi apply` to refresh `~/.Brewfile`. It
-offers to commit + push the change via chezmoi's git.
+Everything in the menu is also a namespaced command:
 
-`remove` lists every recorded package across all managers in a single picker, so you
-don't have to remember how you installed something — just select it.
+```
+casa tools    add [mgr] [name] | rm | update | list
+casa configs  edit [name] | track [path] | untrack [path] | list
+casa secrets  add [path] | edit | list
+casa machine  setup [repo] | sync | save [msg] | status | context | doctor | info
+```
 
-`update` shows per-package outdated info for brew, casks, and global npm packages;
-uv, go, and cargo are offered as manager-wide upgrades (they don't expose per-package
-outdated cleanly).
+## Config (optional)
+
+casa auto-detects your Brewfile and works on any chezmoi repo. To pin specifics,
+add a committed `.casa.toml` at your repo root:
+
+```toml
+[pkg]
+brewfile = "dot_Brewfile.tmpl"   # where `casa tools add` records (auto-detected if omitted)
+anchors  = "casa"                # "# casa:<manager>" insertion markers
+
+[setup]
+repo = "your-username"           # default for `casa machine setup`
+```
+
+Contexts (work/personal/…) come from your repo's `.chezmoi.toml.tmpl` prompts —
+casa doesn't define them, so it adapts to anyone's setup.
 
 ## Versioning
 
-casa uses **date-based versioning** (Stripe-style): the version *is* the release
-date, tagged `vYYYY.MM.DD-N` — the date plus an always-present same-day counter.
-For example `v2026.06.21-0`, then `v2026.06.21-1` for a second release the same day,
-`v2026.06.22-0` the next. `casa --version` reports it as `2026.06.21-0`. Releases are
-cut from `main` via the `release` workflow (`gh workflow run release.yml -R carrots-sh/casa`).
-See [CHANGELOG.md](CHANGELOG.md).
+Date-based (Stripe-style): `vYYYY.MM.DD-N`. See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

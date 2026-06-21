@@ -5,6 +5,15 @@ casa uses **date-based versioning**: the version is the release date, tagged
 `v2026.06.21-0`, then `v2026.06.21-1` for a second release the same day.
 Entries below are keyed by version date, newest first.
 
+## 2026.06.21-1
+
+- **Interactive-first**: `casa` opens a status-aware menu — nothing to memorize.
+- Now a full, generic **chezmoi front-end**: `configs`, `secrets`, `machine`
+  (setup / sync / save / status / context / doctor / info) alongside `tools`.
+- Namespaced commands (`casa tools|configs|secrets|machine …`); the old flat
+  `casa add/remove/update` are gone.
+- Config-driven via optional `.casa.toml`; works on any chezmoi repo.
+
 ## 2026.06.21-0
 
 - Initial date-versioned release.
