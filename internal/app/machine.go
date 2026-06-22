@@ -104,6 +104,7 @@ func Sync() error {
 	if err := chez.Update(); err != nil {
 		return err
 	}
+	invalidateStatus()
 	fmt.Println("✓ up to date  (restart your shell to pick up changes)")
 	return nil
 }
@@ -174,8 +175,8 @@ func Status() error {
 	fmt.Printf("machine:           %s\n", s.machine)
 	fmt.Printf("unsaved changes:   %d\n", s.toSave)
 	fmt.Printf("behind your repo:  %d commit(s)\n", s.behind)
-	fmt.Printf("local drift:       %d file(s) need apply\n", s.drift)
-	fmt.Printf("outdated tools:    %d\n", s.updates)
+	fmt.Printf("local drift:       %d file(s) need apply\n", driftCount())
+	fmt.Printf("outdated tools:    %d\n", outdatedCount())
 	return nil
 }
 
@@ -216,6 +217,7 @@ func Context() error {
 		return rerunPrompts()
 	}
 	fmt.Println("applying...")
+	invalidateStatus()
 	return chez.Apply()
 }
 
@@ -274,6 +276,7 @@ func Undo() error {
 	}
 	_ = chez.Git("push")
 	fmt.Println("applying the revert...")
+	invalidateStatus()
 	return chez.Apply()
 }
 

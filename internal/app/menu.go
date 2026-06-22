@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/carrots-sh/casa/internal/chez"
@@ -54,9 +55,12 @@ func Menu() error {
 
 func toolsMenu() {
 	for {
-		c, err := ui.Select("tools", []string{"add a tool", "remove tool(s)", "update outdated", "list installed", "← back"})
+		c, err := ui.Select("tools", []string{"add a tool", "remove tool(s)", "update outdated", "list installed", "← back", "quit"})
 		if err != nil || c == "" || c == "← back" {
 			return
+		}
+		if c == "quit" {
+			os.Exit(0)
 		}
 		switch c {
 		case "add a tool":
@@ -73,9 +77,12 @@ func toolsMenu() {
 
 func configsMenu() {
 	for {
-		c, err := ui.Select("configs", []string{"edit a config", "track a new file", "untrack a file", "list managed", "← back"})
+		c, err := ui.Select("configs", []string{"edit a config", "track a new file", "untrack a file", "list managed", "← back", "quit"})
 		if err != nil || c == "" || c == "← back" {
 			return
+		}
+		if c == "quit" {
+			os.Exit(0)
 		}
 		switch c {
 		case "edit a config":
@@ -92,9 +99,12 @@ func configsMenu() {
 
 func secretsMenu() {
 	for {
-		c, err := ui.Select("secrets", []string{"edit a secret", "add an encrypted file", "list secrets", "← back"})
+		c, err := ui.Select("secrets", []string{"edit a secret", "add an encrypted file", "list secrets", "← back", "quit"})
 		if err != nil || c == "" || c == "← back" {
 			return
+		}
+		if c == "quit" {
+			os.Exit(0)
 		}
 		switch c {
 		case "edit a secret":
@@ -109,9 +119,12 @@ func secretsMenu() {
 
 func machineMenu() {
 	for {
-		c, err := ui.Select("machine", []string{"set up this machine", "change contexts", "undo last change", "info", "health check", "← back"})
+		c, err := ui.Select("machine", []string{"set up this machine", "change contexts", "undo last change", "info", "health check", "← back", "quit"})
 		if err != nil || c == "" || c == "← back" {
 			return
+		}
+		if c == "quit" {
+			os.Exit(0)
 		}
 		switch c {
 		case "set up this machine":

@@ -111,6 +111,7 @@ func UpdateTools() error {
 			}
 		}
 	}
+	invalidateStatus()
 	fmt.Println("✓ updates applied")
 	return nil
 }

@@ -28,6 +28,7 @@ func requireChezmoi() error {
 
 // offerSave asks to commit+push after a change.
 func offerSave(msg string) {
+	invalidateStatus() // the action already changed local state
 	ok, err := ui.Confirm("save to your repo now?")
 	if err != nil || !ok {
 		fmt.Println("not saved. open casa and choose save when you're ready.")
