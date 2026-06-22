@@ -5,7 +5,7 @@ casa uses **date-based versioning**: the version is the release date, tagged
 `v2026.06.21-0`, then `v2026.06.21-1` for a second release the same day.
 Entries below are keyed by version date, newest first.
 
-## 2026.06.21-5
+## 2026.06.22-0
 
 UX round — make dotfiles dead-simple anywhere:
 
