@@ -42,11 +42,13 @@ func EditSecret() error {
 	if len(enc) == 0 {
 		return fmt.Errorf("no encrypted files in this repo")
 	}
-	sel, err := ui.Select("edit which secret?", enc)
+	disp, bySource := displayNames(enc)
+	sel, err := ui.Select("edit which secret?", disp)
 	if err != nil || sel == "" {
 		return err
 	}
-	plain, err := chez.Decrypt(sel)
+	source := bySource[sel]
+	plain, err := chez.Decrypt(source)
 	if err != nil {
 		return err
 	}
@@ -73,7 +75,7 @@ func EditSecret() error {
 	if err != nil {
 		return err
 	}
-	if err := chez.EncryptInto(string(edited), sel); err != nil {
+	if err := chez.EncryptInto(string(edited), source); err != nil {
 		return err
 	}
 	_ = chez.ApplyNoScripts() // re-render any targets assembled from this secret
@@ -82,14 +84,30 @@ func EditSecret() error {
 	return nil
 }
 
-// ListSecrets prints the encrypted source files.
+// displayNames maps encrypted source paths to readable target-style names,
+// returning the labels (in order) and a label→source lookup. Falls back to the
+// source paths if the conversion fails.
+func displayNames(sources []string) ([]string, map[string]string) {
+	disp, err := chez.TargetPaths(sources)
+	if err != nil || len(disp) != len(sources) {
+		disp = sources
+	}
+	bySource := make(map[string]string, len(sources))
+	for i, d := range disp {
+		bySource[d] = sources[i]
+	}
+	return disp, bySource
+}
+
+// ListSecrets prints the encrypted files by their readable target paths.
 func ListSecrets() error {
 	enc, err := chez.EncryptedSources()
 	if err != nil {
 		return err
 	}
-	for _, e := range enc {
-		fmt.Println(e)
+	disp, _ := displayNames(enc)
+	for _, d := range disp {
+		fmt.Println(d)
 	}
 	return nil
 }

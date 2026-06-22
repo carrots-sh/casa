@@ -200,6 +200,41 @@ func EncryptedSources() ([]string, error) {
 	return found, nil
 }
 
+// TargetPaths converts source-relative paths to their readable target paths
+// (home-relative), e.g. "dot_ssh/encrypted_private_github.age" -> ".ssh/github".
+// Output order matches input order.
+func TargetPaths(sourceRels []string) ([]string, error) {
+	if len(sourceRels) == 0 {
+		return nil, nil
+	}
+	src, err := SourceDir()
+	if err != nil {
+		return nil, err
+	}
+	args := []string{"target-path"}
+	for _, r := range sourceRels {
+		args = append(args, filepath.Join(src, r))
+	}
+	o, err := out(args...)
+	if err != nil {
+		return nil, err
+	}
+	home, _ := os.UserHomeDir()
+	var rels []string
+	for _, l := range strings.Split(strings.TrimRight(o, "\n"), "\n") {
+		l = strings.TrimSpace(l)
+		if l == "" {
+			continue
+		}
+		if r, err := filepath.Rel(home, l); err == nil {
+			rels = append(rels, r)
+		} else {
+			rels = append(rels, l)
+		}
+	}
+	return rels, nil
+}
+
 // EncryptInto encrypts plaintext and writes the ciphertext to a source file.
 func EncryptInto(plaintext, sourceRelPath string) error {
 	src, err := SourceDir()
