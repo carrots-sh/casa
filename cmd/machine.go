@@ -26,7 +26,7 @@ func init() {
 		},
 		&cobra.Command{
 			Use:   "sync",
-			Short: "pull your repo and apply it here",
+			Short: "update this machine — upgrade packages, then pull + apply dotfiles",
 			RunE:  func(cmd *cobra.Command, args []string) error { return app.Sync() },
 		},
 		&cobra.Command{
