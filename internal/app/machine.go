@@ -125,11 +125,18 @@ func Save(msg string) error {
 		fmt.Println("nothing to save — everything's already committed.")
 		return nil
 	}
+	// Show changes by their readable target paths, not raw source names.
+	sources := changedPaths(porcelain)
+	targets, err := chez.TargetPaths(sources)
+	if err != nil || len(targets) != len(sources) {
+		targets = sources
+	}
 	fmt.Println("changes to save:")
-	_ = chez.Git("status", "--short")
-	_ = chez.Git("--no-pager", "diff", "--stat")
+	for _, t := range targets {
+		fmt.Println("  " + t)
+	}
 	if msg == "" {
-		msg = autoMessage(porcelain)
+		msg = autoMessageFrom(targets)
 	}
 	ok, err := ui.Confirm("commit + push?  “" + msg + "”")
 	if err != nil || !ok {
@@ -138,19 +145,31 @@ func Save(msg string) error {
 	return saveAll(msg)
 }
 
-// autoMessage builds a commit message from the names of changed files.
-func autoMessage(porcelain string) string {
-	seen := map[string]bool{}
-	var names []string
+// changedPaths extracts the source-relative paths from `git status --porcelain`.
+func changedPaths(porcelain string) []string {
+	var out []string
 	for _, l := range strings.Split(porcelain, "\n") {
-		if strings.TrimSpace(l) == "" {
+		if len(l) < 4 {
 			continue
 		}
-		f := strings.TrimSpace(l)
-		if i := strings.LastIndex(f, " "); i >= 0 {
-			f = f[i+1:]
+		p := l[3:] // after the two-char status + space
+		if i := strings.Index(p, " -> "); i >= 0 {
+			p = p[i+4:] // a rename: take the new path
 		}
-		b := filepath.Base(f)
+		p = strings.Trim(p, "\"")
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// autoMessageFrom builds a commit message from the basenames of changed files.
+func autoMessageFrom(paths []string) string {
+	seen := map[string]bool{}
+	var names []string
+	for _, p := range paths {
+		b := filepath.Base(p)
 		if b != "" && !seen[b] {
 			seen[b] = true
 			names = append(names, b)

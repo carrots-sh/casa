@@ -20,15 +20,28 @@ func TestRepoURLs(t *testing.T) {
 	}
 }
 
-func TestAutoMessage(t *testing.T) {
-	if got := autoMessage(""); got != "casa: update dotfiles" {
+func TestAutoMessageFrom(t *testing.T) {
+	if got := autoMessageFrom(nil); got != "casa: update dotfiles" {
 		t.Errorf("empty: got %q", got)
 	}
-	if got := autoMessage(" M a\n M b"); got != "casa: update a, b" {
+	if got := autoMessageFrom([]string{".aws/a", ".ssh/b"}); got != "casa: update a, b" {
 		t.Errorf("two: got %q", got)
 	}
-	if got := autoMessage(" M a\n M b\n M c\n M d"); !strings.Contains(got, "and 1 more") {
+	if got := autoMessageFrom([]string{"a", "b", "c", "d"}); !strings.Contains(got, "and 1 more") {
 		t.Errorf("many: got %q", got)
+	}
+}
+
+func TestChangedPaths(t *testing.T) {
+	got := changedPaths(" M dot_zshrc\n?? new.txt\nR  old -> dot_aws/config")
+	want := []string{"dot_zshrc", "new.txt", "dot_aws/config"}
+	if len(got) != len(want) {
+		t.Fatalf("got %v want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("got[%d]=%q want %q", i, got[i], want[i])
+		}
 	}
 }
 
