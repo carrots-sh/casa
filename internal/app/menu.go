@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/carrots-sh/casa/internal/chez"
 	"github.com/carrots-sh/casa/internal/ui"
 )
 
@@ -11,6 +12,10 @@ import (
 func Menu() error {
 	if err := requireChezmoi(); err != nil {
 		return err
+	}
+	if !chez.HasRepo() {
+		fmt.Println("looks like a fresh machine — let's set up your dotfiles.")
+		return Setup("")
 	}
 	for {
 		s := computeStatus()
@@ -104,7 +109,7 @@ func secretsMenu() {
 
 func machineMenu() {
 	for {
-		c, err := ui.Select("machine", []string{"set up this machine", "change contexts", "info", "health check", "← back"})
+		c, err := ui.Select("machine", []string{"set up this machine", "change contexts", "undo last change", "info", "health check", "← back"})
 		if err != nil || c == "" || c == "← back" {
 			return
 		}
@@ -113,6 +118,8 @@ func machineMenu() {
 			report(Setup(""))
 		case "change contexts":
 			report(Context())
+		case "undo last change":
+			report(Undo())
 		case "info":
 			report(Info())
 		case "health check":

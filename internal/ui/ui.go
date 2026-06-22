@@ -54,6 +54,20 @@ func MultiSelect(title string, opts []string) ([]string, error) {
 	return v, err
 }
 
+// MultiSelectPreselected is like MultiSelect but starts with some options ticked.
+func MultiSelectPreselected(title string, opts, selected []string) ([]string, error) {
+	v := append([]string{}, selected...)
+	err := huh.NewForm(huh.NewGroup(
+		huh.NewMultiSelect[string]().
+			Title(title).
+			Options(huh.NewOptions(opts...)...).
+			Height(14).
+			Filterable(true).
+			Value(&v),
+	)).WithTheme(theme()).Run()
+	return v, err
+}
+
 // Input prompts for free text.
 func Input(title string) (string, error) {
 	var v string

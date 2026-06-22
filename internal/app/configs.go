@@ -49,23 +49,98 @@ func EditConfig(name string) error {
 	return nil
 }
 
-// TrackFile starts managing an existing file.
+// TrackFile starts managing a file. With no path it offers an "adopt" picker of
+// common dotfiles found in $HOME that aren't managed yet.
 func TrackFile(path string) error {
 	if err := requireChezmoi(); err != nil {
 		return err
 	}
-	if path == "" {
-		var err error
-		if path, err = ui.Input("path of the file to start managing"); err != nil || path == "" {
+	if path != "" {
+		if err := trackOne(expand(path)); err != nil {
 			return err
 		}
+		offerSave("casa: track " + filepath.Base(path))
+		return nil
 	}
-	if err := chez.Add(expand(path)); err != nil {
+
+	if cands := unmanagedCommonDotfiles(); len(cands) > 0 {
+		sel, err := ui.MultiSelect("which files should casa manage?", cands)
+		if err != nil || len(sel) == 0 {
+			return err
+		}
+		for _, rel := range sel {
+			if err := trackOne(homePath(rel)); err != nil {
+				fmt.Printf("  (skipped %s: %v)\n", rel, err)
+			}
+		}
+		offerSave("casa: track files")
+		return nil
+	}
+
+	p, err := ui.Input("path of the file to start managing")
+	if err != nil || p == "" {
 		return err
 	}
-	fmt.Printf("✓ now managing %s\n", path)
-	offerSave("casa: track " + filepath.Base(path))
+	if err := trackOne(expand(p)); err != nil {
+		return err
+	}
+	offerSave("casa: track " + filepath.Base(p))
 	return nil
+}
+
+// trackOne manages a single file, offering to encrypt it if it looks sensitive.
+func trackOne(abs string) error {
+	if looksSensitive(abs) {
+		if ok, _ := ui.Confirm(filepath.Base(abs) + " looks sensitive — encrypt it?"); ok {
+			if err := chez.AddEncrypt(abs); err != nil {
+				return err
+			}
+			fmt.Printf("✓ now managing %s (encrypted)\n", abs)
+			return nil
+		}
+	}
+	if err := chez.Add(abs); err != nil {
+		return err
+	}
+	fmt.Printf("✓ now managing %s\n", abs)
+	return nil
+}
+
+func looksSensitive(path string) bool {
+	b := strings.ToLower(filepath.Base(path))
+	for _, p := range []string{".env", ".pem", ".key", "credential", "secret", "id_rsa", "id_ed25519", "token"} {
+		if strings.Contains(b, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// unmanagedCommonDotfiles lists well-known dotfiles present in $HOME but unmanaged.
+func unmanagedCommonDotfiles() []string {
+	common := []string{
+		".zshrc", ".zprofile", ".bashrc", ".bash_profile", ".profile",
+		".gitconfig", ".gitignore", ".vimrc", ".tmux.conf", ".inputrc",
+		".config/starship.toml", ".config/nvim/init.lua", ".config/ghostty/config",
+		".aliases", ".functions", ".curlrc", ".editorconfig",
+	}
+	managed := map[string]bool{}
+	if m, err := chez.Managed(); err == nil {
+		for _, f := range m {
+			managed[f] = true
+		}
+	}
+	home, _ := os.UserHomeDir()
+	var out []string
+	for _, rel := range common {
+		if managed[rel] {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(home, rel)); err == nil {
+			out = append(out, rel)
+		}
+	}
+	return out
 }
 
 // UntrackFile stops managing a file but keeps it on disk.

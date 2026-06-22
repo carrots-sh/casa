@@ -48,8 +48,13 @@ func init() {
 		},
 		&cobra.Command{
 			Use:   "context",
-			Short: "change this machine's setup answers (contexts) and re-apply",
+			Short: "toggle this machine's contexts and re-apply",
 			RunE:  func(cmd *cobra.Command, args []string) error { return app.Context() },
+		},
+		&cobra.Command{
+			Use:   "undo",
+			Short: "revert the last saved change and re-apply",
+			RunE:  func(cmd *cobra.Command, args []string) error { return app.Undo() },
 		},
 		&cobra.Command{
 			Use:   "doctor",

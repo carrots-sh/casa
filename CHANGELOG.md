@@ -5,6 +5,19 @@ casa uses **date-based versioning**: the version is the release date, tagged
 `v2026.06.21-0`, then `v2026.06.21-1` for a second release the same day.
 Entries below are keyed by version date, newest first.
 
+## 2026.06.21-5
+
+UX round — make dotfiles dead-simple anywhere:
+
+- **One-line bootstrap** `install.sh`: Homebrew + casa + optional setup in one command.
+- **Fresh-machine auto-start**: running `casa` with nothing set up jumps straight to setup.
+- **Auto commit messages**: `save` summarizes changed files (no typing).
+- **Adopt picker**: `configs track` (no arg) offers common unmanaged dotfiles to manage.
+- **Contexts checklist**: `machine context` toggles on/off contexts instead of re-asking everything.
+- **Sensitive-file detection**: tracking a `.env`/`*.key`/credential offers to encrypt it.
+- **`machine undo`**: revert the last saved change and re-apply.
+- **Diff preview**: `save` shows a `--stat` of what will be committed.
+
 ## 2026.06.21-4
 
 - **Branded source dir**: casa stores dotfiles in `~/.local/share/casa` by default

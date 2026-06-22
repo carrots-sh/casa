@@ -8,6 +8,15 @@ the single source of truth and works with or without casa.
 
 ## Install
 
+One line on a brand-new machine — installs Homebrew if needed, installs casa, and
+(optionally) sets everything up from your dotfiles:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/carrots-sh/casa/main/install.sh | sh -s -- <your-github-username>
+```
+
+Or just the binary:
+
 ```bash
 brew install carrots-sh/tap/casa
 ```

@@ -3,6 +3,7 @@
 package chez
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -68,6 +69,25 @@ func out(args ...string) (string, error) {
 func Available() bool {
 	_, err := exec.LookPath("chezmoi")
 	return err == nil
+}
+
+// HasRepo reports whether casa's source dir is an initialized git repo.
+func HasRepo() bool {
+	_, err := os.Stat(filepath.Join(resolve(), ".git"))
+	return err == nil
+}
+
+// Data returns chezmoi's template data as a generic map (chezmoi data --format json).
+func Data() (map[string]any, error) {
+	o, err := out("data", "--format", "json")
+	if err != nil {
+		return nil, err
+	}
+	var m map[string]any
+	if err := json.Unmarshal([]byte(o), &m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // SourceDir returns casa's source directory (the dotfiles repo).

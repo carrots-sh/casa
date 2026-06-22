@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/carrots-sh/casa/internal/chez"
@@ -111,20 +113,43 @@ func Save(msg string) error {
 	}
 	fmt.Println("changes to save:")
 	_ = chez.Git("status", "--short")
+	_ = chez.Git("--no-pager", "diff", "--stat")
 	if msg == "" {
-		var err error
-		if msg, err = ui.Input("describe this change"); err != nil {
-			return err
-		}
-		if msg == "" {
-			msg = "casa: update dotfiles"
-		}
+		msg = autoMessage(porcelain)
 	}
-	ok, err := ui.Confirm("commit + push these?")
+	ok, err := ui.Confirm("commit + push?  “" + msg + "”")
 	if err != nil || !ok {
 		return err
 	}
 	return saveAll(msg)
+}
+
+// autoMessage builds a commit message from the names of changed files.
+func autoMessage(porcelain string) string {
+	seen := map[string]bool{}
+	var names []string
+	for _, l := range strings.Split(porcelain, "\n") {
+		if strings.TrimSpace(l) == "" {
+			continue
+		}
+		f := strings.TrimSpace(l)
+		if i := strings.LastIndex(f, " "); i >= 0 {
+			f = f[i+1:]
+		}
+		b := filepath.Base(f)
+		if b != "" && !seen[b] {
+			seen[b] = true
+			names = append(names, b)
+		}
+	}
+	switch {
+	case len(names) == 0:
+		return "casa: update dotfiles"
+	case len(names) > 3:
+		return fmt.Sprintf("casa: update %s and %d more", strings.Join(names[:3], ", "), len(names)-3)
+	default:
+		return "casa: update " + strings.Join(names, ", ")
+	}
 }
 
 // Status prints the full overview.
@@ -141,12 +166,47 @@ func Status() error {
 	return nil
 }
 
-// Context re-asks this machine's setup questions (contexts) and re-applies.
+// Context lets you toggle this machine's contexts (the on/off setup answers)
+// from a checklist, then re-applies. Falls back to re-asking the prompts if it
+// can't read or write the values directly.
 func Context() error {
 	if err := requireChezmoi(); err != nil {
 		return err
 	}
-	fmt.Println("re-running this machine's setup questions...")
+	data, err := chez.Data()
+	if err != nil {
+		return rerunPrompts()
+	}
+	var keys, current []string
+	for k, v := range data {
+		if b, ok := v.(bool); ok {
+			keys = append(keys, k)
+			if b {
+				current = append(current, k)
+			}
+		}
+	}
+	if len(keys) == 0 {
+		return rerunPrompts()
+	}
+	sort.Strings(keys)
+	sel, err := ui.MultiSelectPreselected("which contexts are on for this machine?", keys, current)
+	if err != nil {
+		return err
+	}
+	want := map[string]bool{}
+	for _, k := range sel {
+		want[k] = true
+	}
+	if err := setContextData(keys, want); err != nil {
+		fmt.Println("couldn't update the config directly; re-asking the setup questions instead...")
+		return rerunPrompts()
+	}
+	fmt.Println("applying...")
+	return chez.Apply()
+}
+
+func rerunPrompts() error {
 	c := exec.Command("chezmoi", "init", "--prompt")
 	c.Stdin, c.Stdout, c.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := c.Run(); err != nil {
@@ -154,6 +214,57 @@ func Context() error {
 	}
 	return chez.Apply()
 }
+
+// setContextData rewrites the bool context keys in ~/.config/chezmoi/chezmoi.toml.
+func setContextData(keys []string, want map[string]bool) error {
+	home, _ := os.UserHomeDir()
+	cfg := filepath.Join(home, ".config", "chezmoi", "chezmoi.toml")
+	data, err := os.ReadFile(cfg)
+	if err != nil {
+		return err
+	}
+	_ = os.WriteFile(cfg+".casa.bak", data, 0o644) // safety backup
+	lines := strings.Split(string(data), "\n")
+	set := map[string]bool{}
+	for i, l := range lines {
+		for _, k := range keys {
+			re := regexp.MustCompile(`^(\s*` + regexp.QuoteMeta(k) + `\s*=\s*)(true|false)\s*$`)
+			if m := re.FindStringSubmatch(l); m != nil {
+				lines[i] = fmt.Sprintf("%s%t", m[1], want[k])
+				set[k] = true
+			}
+		}
+	}
+	for _, k := range keys {
+		if !set[k] {
+			return fmt.Errorf("context %q is not a simple value in the config", k)
+		}
+	}
+	return os.WriteFile(cfg, []byte(strings.Join(lines, "\n")), 0o644)
+}
+
+// Undo reverts the last saved change and re-applies.
+func Undo() error {
+	if err := requireChezmoi(); err != nil {
+		return err
+	}
+	last := strings.TrimSpace(mustOut(chez.GitOut("log", "-1", "--oneline")))
+	if last == "" {
+		return fmt.Errorf("nothing to undo")
+	}
+	ok, err := ui.Confirm("undo last change?  " + last)
+	if err != nil || !ok {
+		return err
+	}
+	if err := chez.Git("revert", "--no-edit", "HEAD"); err != nil {
+		return err
+	}
+	_ = chez.Git("push")
+	fmt.Println("applying the revert...")
+	return chez.Apply()
+}
+
+func mustOut(s string, _ error) string { return s }
 
 // Doctor runs chezmoi's health check.
 func Doctor() error {
