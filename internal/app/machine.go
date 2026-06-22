@@ -88,17 +88,30 @@ func reachable(url string) bool {
 	return c.Run() == nil
 }
 
-// Sync pulls the repo and applies it here.
+// Sync brings this machine fully up to date: upgrade packages, then pull the
+// repo and apply it here. (Replaces the old `sysupdate` shell function.)
 func Sync() error {
 	if err := requireChezmoi(); err != nil {
 		return err
 	}
-	fmt.Println("catching this machine up...")
+	if _, err := exec.LookPath("brew"); err == nil {
+		fmt.Println("upgrading packages...")
+		_ = runShell("brew", "update")
+		_ = runShell("brew", "upgrade")
+		_ = runShell("brew", "cleanup")
+	}
+	fmt.Println("syncing dotfiles...")
 	if err := chez.Update(); err != nil {
 		return err
 	}
-	fmt.Println("✓ up to date")
+	fmt.Println("✓ up to date  (restart your shell to pick up changes)")
 	return nil
+}
+
+func runShell(name string, args ...string) error {
+	c := exec.Command(name, args...)
+	c.Stdout, c.Stderr, c.Stdin = os.Stdout, os.Stderr, os.Stdin
+	return c.Run()
 }
 
 // Save shows pending changes then commits + pushes.

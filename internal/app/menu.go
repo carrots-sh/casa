@@ -23,7 +23,7 @@ func Menu() error {
 			"configs  · edit your dotfiles",
 			"tools    · install, remove, update" + hint(s.updates, "updates"),
 			"secrets  · encrypted files",
-			"sync     · pull latest onto this machine" + hint(s.behind, "behind"),
+			"sync     · update this machine (packages + dotfiles)" + hint(s.behind, "behind"),
 			"save     · publish your changes" + hint(s.toSave, "to save"),
 			"status   · full overview",
 			"machine  · contexts, info, health",
