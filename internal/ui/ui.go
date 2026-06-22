@@ -2,26 +2,29 @@
 package ui
 
 import (
-	"os"
 	"sync"
 
 	"charm.land/huh/v2"
-	"charm.land/lipgloss/v2"
 )
 
-// theme is detected once, lazily, so non-interactive commands never query the
-// terminal. It adapts to the terminal's actual background (fixes light mode).
 var (
 	themeOnce sync.Once
 	themeVal  huh.Theme
 )
 
+// theme keeps charm's accent for the selected item but renders every other
+// option in the terminal's own foreground, so it stays readable on any
+// background (huh's auto color picks wash out in light terminals).
 func theme() huh.Theme {
 	themeOnce.Do(func() {
-		// Detect the real terminal background ourselves and pin it, since huh's
-		// own detection can default to dark (washing out light terminals).
-		isDark := lipgloss.HasDarkBackground(os.Stdin, os.Stdout)
-		themeVal = huh.ThemeFunc(func(bool) *huh.Styles { return huh.ThemeCharm(isDark) })
+		themeVal = huh.ThemeFunc(func(isDark bool) *huh.Styles {
+			s := huh.ThemeCharm(isDark)
+			s.Focused.Option = s.Focused.Option.UnsetForeground()
+			s.Focused.UnselectedOption = s.Focused.UnselectedOption.UnsetForeground()
+			s.Blurred.Option = s.Blurred.Option.UnsetForeground()
+			s.Blurred.UnselectedOption = s.Blurred.UnselectedOption.UnsetForeground()
+			return s
+		})
 	})
 	return themeVal
 }
