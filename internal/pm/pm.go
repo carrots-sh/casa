@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 // Managers is the set of supported managers, in display order.
@@ -105,6 +106,9 @@ func Outdated() []string {
 	return items
 }
 
+// UpgradeAllBrew upgrades every outdated formula and cask in a single brew call.
+func UpgradeAllBrew() error { return run("brew", "upgrade") }
+
 // UpgradeAll runs a manager-wide upgrade for tools without per-package outdated info.
 func UpgradeAll(mgr string) error {
 	switch mgr {
@@ -117,6 +121,63 @@ func UpgradeAll(mgr string) error {
 		return run("cargo", "install-update", "-a")
 	}
 	return nil
+}
+
+// Result is a single search hit: which manager offers the package, and its name.
+type Result struct{ Mgr, Name string }
+
+// Searchable lists the managers whose CLIs expose a usable package search.
+// tap/go/uv have no meaningful search, so they're omitted.
+var Searchable = []string{"brew", "cask", "npm", "cargo"}
+
+// Search returns package names matching query for a single manager.
+func Search(mgr, query string) []string {
+	switch mgr {
+	case "brew":
+		return lines(capture("brew", "search", "--formula", query))
+	case "cask":
+		return lines(capture("brew", "search", "--cask", query))
+	case "npm":
+		var out []string
+		for _, l := range lines(capture("npm", "search", query, "--parseable")) {
+			if name := strings.SplitN(l, "\t", 2)[0]; name != "" {
+				out = append(out, name)
+			}
+		}
+		return out
+	case "cargo":
+		var out []string
+		for _, l := range lines(capture("cargo", "search", query)) {
+			// format: name = "version"   # description
+			if i := strings.Index(l, " = "); i > 0 {
+				out = append(out, strings.TrimSpace(l[:i]))
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+// SearchAll runs Search across every Searchable manager in parallel and returns
+// the combined hits, grouped in manager order.
+func SearchAll(query string) []Result {
+	hits := make([][]string, len(Searchable))
+	var wg sync.WaitGroup
+	for i, mgr := range Searchable {
+		wg.Add(1)
+		go func(i int, mgr string) {
+			defer wg.Done()
+			hits[i] = Search(mgr, query)
+		}(i, mgr)
+	}
+	wg.Wait()
+	var out []Result
+	for i, mgr := range Searchable {
+		for _, n := range hits[i] {
+			out = append(out, Result{mgr, n})
+		}
+	}
+	return out
 }
 
 func lines(s string) []string {

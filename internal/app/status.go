@@ -59,10 +59,10 @@ func computeStatus() statusInfo {
 	var s statusInfo
 	s.machine = machineName()
 	if out, err := chez.GitOut("status", "--porcelain"); err == nil {
-		s.toSave = countLines(out)
+		s.toSave = len(chez.NonEmpty(out))
 	}
 	if out, err := chez.GitOut("rev-list", "--count", "HEAD..@{u}"); err == nil {
-		s.behind = atoi(strings.TrimSpace(out))
+		s.behind, _ = strconv.Atoi(strings.TrimSpace(out))
 	}
 	stMu.Lock()
 	cp := s
@@ -100,19 +100,4 @@ func machineName() string {
 		return strings.ToLower(strings.TrimSuffix(h, ".local"))
 	}
 	return "this machine"
-}
-
-func countLines(s string) int {
-	n := 0
-	for _, l := range strings.Split(s, "\n") {
-		if strings.TrimSpace(l) != "" {
-			n++
-		}
-	}
-	return n
-}
-
-func atoi(s string) int {
-	n, _ := strconv.Atoi(s)
-	return n
 }

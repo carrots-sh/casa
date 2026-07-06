@@ -13,7 +13,6 @@ import (
 type Config struct {
 	Pkg struct {
 		Brewfile string `toml:"brewfile"` // source template that records packages
-		Anchors  string `toml:"anchors"`  // "# casa:<manager>" anchor prefix word
 	} `toml:"pkg"`
 	Setup struct {
 		Repo string `toml:"repo"` // default repo for `casa machine setup`
@@ -23,19 +22,15 @@ type Config struct {
 // Load reads .casa.toml from the chezmoi source dir, applying defaults.
 func Load() Config {
 	var c Config
-	if src, err := chez.SourceDir(); err == nil {
-		_, _ = toml.DecodeFile(filepath.Join(src, ".casa.toml"), &c)
-		if c.Pkg.Brewfile == "" {
-			for _, cand := range []string{"dot_Brewfile.tmpl", "dot_Brewfile", "Brewfile.tmpl", "Brewfile"} {
-				if _, err := os.Stat(filepath.Join(src, cand)); err == nil {
-					c.Pkg.Brewfile = cand
-					break
-				}
+	src := chez.SourceDir()
+	_, _ = toml.DecodeFile(filepath.Join(src, ".casa.toml"), &c)
+	if c.Pkg.Brewfile == "" {
+		for _, cand := range []string{"dot_Brewfile.tmpl", "dot_Brewfile", "Brewfile.tmpl", "Brewfile"} {
+			if _, err := os.Stat(filepath.Join(src, cand)); err == nil {
+				c.Pkg.Brewfile = cand
+				break
 			}
 		}
-	}
-	if c.Pkg.Anchors == "" {
-		c.Pkg.Anchors = "casa"
 	}
 	return c
 }
@@ -45,9 +40,5 @@ func (c Config) BrewfileTmpl() string {
 	if c.Pkg.Brewfile == "" {
 		return ""
 	}
-	src, err := chez.SourceDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(src, c.Pkg.Brewfile)
+	return filepath.Join(chez.SourceDir(), c.Pkg.Brewfile)
 }

@@ -23,23 +23,48 @@ func expand(p string) string {
 	return p
 }
 
+// pickManaged resolves query against the managed files: exact match wins,
+// a single substring hit opens directly, several hits show a pre-filtered
+// picker, none is an error. Empty query = full picker.
+func pickManaged(title, query string) (string, error) {
+	managed, err := chez.Managed()
+	if err != nil {
+		return "", err
+	}
+	if len(managed) == 0 {
+		fmt.Println("no configs yet — start with: casa configs track <path>")
+		return "", nil
+	}
+	if query == "" {
+		return ui.Select(title, managed)
+	}
+	var filtered []string
+	for _, m := range managed {
+		if m == query {
+			return m, nil
+		}
+		if strings.Contains(strings.ToLower(m), strings.ToLower(query)) {
+			filtered = append(filtered, m)
+		}
+	}
+	switch len(filtered) {
+	case 1:
+		return filtered[0], nil
+	case 0:
+		return "", fmt.Errorf("nothing managed matches %q", query)
+	default:
+		return ui.Select(title, filtered)
+	}
+}
+
 // EditConfig fuzzy-picks a managed file and edits it (encrypted ones transparently).
 func EditConfig(name string) error {
 	if err := requireChezmoi(); err != nil {
 		return err
 	}
-	sel := name
-	if sel == "" {
-		managed, err := chez.Managed()
-		if err != nil {
-			return err
-		}
-		if len(managed) == 0 {
-			return fmt.Errorf("no managed files yet")
-		}
-		if sel, err = ui.Select("edit which config?", managed); err != nil || sel == "" {
-			return err
-		}
+	sel, err := pickManaged("edit which config?", name)
+	if err != nil || sel == "" {
+		return err
 	}
 	if err := chez.Edit(homePath(sel)); err != nil {
 		return err
@@ -148,18 +173,22 @@ func UntrackFile(path string) error {
 	if err := requireChezmoi(); err != nil {
 		return err
 	}
-	if path == "" {
-		managed, err := chez.Managed()
-		if err != nil {
-			return err
+	if path != "" {
+		if _, err := os.Stat(expand(path)); err == nil {
+			path = expand(path)
+		} else {
+			sel, err := pickManaged("stop managing which file? (it stays on disk)", path)
+			if err != nil || sel == "" {
+				return err
+			}
+			path = homePath(sel)
 		}
-		sel, err := ui.Select("stop managing which file? (it stays on disk)", managed)
+	} else {
+		sel, err := pickManaged("stop managing which file? (it stays on disk)", "")
 		if err != nil || sel == "" {
 			return err
 		}
 		path = homePath(sel)
-	} else {
-		path = expand(path)
 	}
 	if err := chez.Forget(path); err != nil {
 		return err

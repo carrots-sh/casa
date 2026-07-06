@@ -9,13 +9,12 @@ import (
 	"github.com/carrots-sh/casa/internal/brewfile"
 	"github.com/carrots-sh/casa/internal/chez"
 	"github.com/carrots-sh/casa/internal/config"
-	"github.com/carrots-sh/casa/internal/ui"
 )
 
 // bf builds the Brewfile handle from config.
 func bf() brewfile.Brewfile {
 	c := config.Load()
-	return brewfile.Brewfile{Tmpl: c.BrewfileTmpl(), Anchor: c.Pkg.Anchors}
+	return brewfile.Brewfile{Tmpl: c.BrewfileTmpl(), Anchor: "casa"}
 }
 
 // requireChezmoi returns an error if chezmoi isn't installed.
@@ -28,13 +27,8 @@ func requireChezmoi() error {
 
 // offerSave asks to commit+push after a change.
 func offerSave(msg string) {
-	invalidateStatus() // the action already changed local state
-	ok, err := ui.Confirm("save to your repo now?")
-	if err != nil || !ok {
-		fmt.Println("not saved. open casa and choose save when you're ready.")
-		return
-	}
-	if err := saveAll(msg); err != nil {
+	invalidateStatus()
+	if err := Save(msg); err != nil {
 		fmt.Println(err)
 	}
 }
@@ -56,6 +50,6 @@ func saveAll(msg string) error {
 		fmt.Println("committed locally, but push failed — push later from casa → save.")
 		return nil
 	}
-	fmt.Println("✓ saved + pushed")
+	fmt.Println("✓ saved + pushed  (casa undo to revert)")
 	return nil
 }

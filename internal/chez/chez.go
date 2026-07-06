@@ -91,9 +91,7 @@ func Data() (map[string]any, error) {
 }
 
 // SourceDir returns casa's source directory (the dotfiles repo).
-func SourceDir() (string, error) {
-	return resolve(), nil
-}
+func SourceDir() string { return resolve() }
 
 // Managed returns the managed target files (paths relative to home).
 func Managed() ([]string, error) {
@@ -101,7 +99,7 @@ func Managed() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return nonEmpty(s), nil
+	return NonEmpty(s), nil
 }
 
 // Status returns the raw `chezmoi status` lines (drift between source and target).
@@ -110,7 +108,7 @@ func Status() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return nonEmpty(s), nil
+	return NonEmpty(s), nil
 }
 
 // Apply applies the given target paths (all if none), running scripts.
@@ -144,11 +142,7 @@ func Cat(homePath string) (string, error) { return out("cat", homePath) }
 
 // Decrypt returns the plaintext of an encrypted source file (relative to source dir).
 func Decrypt(sourceRelPath string) (string, error) {
-	src, err := SourceDir()
-	if err != nil {
-		return "", err
-	}
-	return out("decrypt", filepath.Join(src, sourceRelPath))
+	return out("decrypt", filepath.Join(SourceDir(), sourceRelPath))
 }
 
 // Doctor runs chezmoi's health check.
@@ -156,24 +150,16 @@ func Doctor() error { return run("doctor") }
 
 // Git runs a git command inside the source repo.
 func Git(args ...string) error {
-	src, err := SourceDir()
-	if err != nil {
-		return err
-	}
 	c := exec.Command("git", args...)
-	c.Dir = src
+	c.Dir = SourceDir()
 	c.Stdout, c.Stderr, c.Stdin = os.Stdout, os.Stderr, os.Stdin
 	return c.Run()
 }
 
 // GitOut runs a git command in the source repo and returns stdout.
 func GitOut(args ...string) (string, error) {
-	src, err := SourceDir()
-	if err != nil {
-		return "", err
-	}
 	c := exec.Command("git", args...)
-	c.Dir = src
+	c.Dir = SourceDir()
 	o, err := c.Output()
 	return string(o), err
 }
@@ -181,10 +167,7 @@ func GitOut(args ...string) (string, error) {
 // EncryptedSources lists source-relative paths of encrypted files (managed
 // targets and template fragments alike), found by the "encrypted_" name attribute.
 func EncryptedSources() ([]string, error) {
-	src, err := SourceDir()
-	if err != nil {
-		return nil, err
-	}
+	src := SourceDir()
 	var found []string
 	_ = filepath.WalkDir(src, func(p string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -207,13 +190,9 @@ func TargetPaths(sourceRels []string) ([]string, error) {
 	if len(sourceRels) == 0 {
 		return nil, nil
 	}
-	src, err := SourceDir()
-	if err != nil {
-		return nil, err
-	}
 	args := []string{"target-path"}
 	for _, r := range sourceRels {
-		args = append(args, filepath.Join(src, r))
+		args = append(args, filepath.Join(SourceDir(), r))
 	}
 	o, err := out(args...)
 	if err != nil {
@@ -237,20 +216,17 @@ func TargetPaths(sourceRels []string) ([]string, error) {
 
 // EncryptInto encrypts plaintext and writes the ciphertext to a source file.
 func EncryptInto(plaintext, sourceRelPath string) error {
-	src, err := SourceDir()
-	if err != nil {
-		return err
-	}
 	c := exec.Command("chezmoi", "encrypt")
 	c.Stdin = strings.NewReader(plaintext)
 	cipher, err := c.Output()
 	if err != nil {
 		return fmt.Errorf("chezmoi encrypt: %w", err)
 	}
-	return os.WriteFile(filepath.Join(src, sourceRelPath), cipher, 0o644)
+	return os.WriteFile(filepath.Join(SourceDir(), sourceRelPath), cipher, 0o644)
 }
 
-func nonEmpty(s string) []string {
+// NonEmpty splits s into its non-blank lines.
+func NonEmpty(s string) []string {
 	var out []string
 	for _, l := range strings.Split(s, "\n") {
 		if l = strings.TrimRight(l, "\r"); strings.TrimSpace(l) != "" {

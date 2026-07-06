@@ -10,16 +10,16 @@ import (
 	"github.com/carrots-sh/casa/internal/ui"
 )
 
-// AddTool installs a package and records it in the Brewfile.
+// AddTool installs a package and records it in the Brewfile. With no name it
+// searches across all package managers and lets you pick where to install from.
 func AddTool(mgr, name string) error {
 	var err error
-	if mgr == "" {
-		if mgr, err = ui.Select("which package manager?", pm.Managers); err != nil || mgr == "" {
+	if name == "" {
+		if mgr, name, err = searchPick(mgr); err != nil || name == "" {
 			return err
 		}
-	}
-	if name == "" {
-		if name, err = ui.Input("package name (" + mgr + ")"); err != nil || name == "" {
+	} else if mgr == "" {
+		if mgr, err = ui.Select("which package manager?", pm.Managers); err != nil || mgr == "" {
 			return err
 		}
 	}
@@ -41,6 +41,40 @@ func AddTool(mgr, name string) error {
 	return nil
 }
 
+// searchPick prompts for a query, searches every manager in parallel, and
+// returns the (manager, name) the user picks. If mgr is given, it scopes the
+// search to that one manager.
+func searchPick(mgr string) (string, string, error) {
+	query, err := ui.Input("search packages (" + strings.Join(pm.Searchable, ", ") + ")")
+	if err != nil || query == "" {
+		return "", "", err
+	}
+	var results []pm.Result
+	if mgr != "" {
+		for _, n := range pm.Search(mgr, query) {
+			results = append(results, pm.Result{Mgr: mgr, Name: n})
+		}
+	} else {
+		results = pm.SearchAll(query)
+	}
+	if len(results) == 0 {
+		return "", "", fmt.Errorf("no packages found for %q", query)
+	}
+	labels := make([]string, len(results))
+	byLabel := map[string]pm.Result{}
+	for i, r := range results {
+		l := fmt.Sprintf("%-6s %s", r.Mgr, r.Name)
+		labels[i] = l
+		byLabel[l] = r
+	}
+	sel, err := ui.Select("install which?", labels)
+	if err != nil || sel == "" {
+		return "", "", err
+	}
+	r := byLabel[sel]
+	return r.Mgr, r.Name, nil
+}
+
 type tool struct{ mgr, name string }
 
 // RemoveTools shows a flat list of everything recorded across all managers.
@@ -57,7 +91,8 @@ func RemoveTools() error {
 		}
 	}
 	if len(labels) == 0 {
-		return fmt.Errorf("nothing recorded in the brewfile")
+		fmt.Println("nothing recorded yet — try: casa tools add")
+		return nil
 	}
 	sel, err := ui.MultiSelect("remove which? (space to pick, enter to confirm)", labels)
 	if err != nil || len(sel) == 0 {
@@ -85,11 +120,18 @@ func RemoveTools() error {
 // UpdateTools lists outdated packages and upgrades the chosen ones.
 func UpdateTools() error {
 	items := pm.Outdated()
+	if len(items) == 0 {
+		fmt.Println("✓ nothing outdated (brew, cask, npm)")
+		return nil
+	}
+	// ponytail: uv/cargo blanket upgrades only reachable when brew/cask/npm has updates.
 	items = append(items, "uv    (upgrade all uv tools)", "cargo (upgrade all)")
 	sel, err := ui.MultiSelect("update which? (space to pick, enter to confirm)", items)
 	if err != nil || len(sel) == 0 {
 		return err
 	}
+	allSel := len(sel) == len(items) // everything picked → one brew upgrade, not per-package
+	brewDone := false
 	for _, line := range sel {
 		f := strings.Fields(line)
 		if len(f) == 0 {
@@ -101,6 +143,18 @@ func UpdateTools() error {
 			if err := pm.UpgradeAll(f[0]); err != nil {
 				fmt.Printf("  %v\n", err)
 			}
+		case "brew", "cask":
+			if allSel {
+				if !brewDone {
+					brewDone = true
+					fmt.Println("upgrading all brew packages...")
+					if err := pm.UpgradeAllBrew(); err != nil {
+						fmt.Printf("  %v\n", err)
+					}
+				}
+				continue
+			}
+			fallthrough
 		default:
 			if len(f) < 2 {
 				continue

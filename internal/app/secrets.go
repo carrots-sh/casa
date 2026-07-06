@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/carrots-sh/casa/internal/chez"
 	"github.com/carrots-sh/casa/internal/ui"
@@ -31,7 +32,7 @@ func AddSecret(path string) error {
 
 // EditSecret picks an encrypted source file, decrypts it to a temp file, opens
 // the editor, then re-encrypts back into the repo.
-func EditSecret() error {
+func EditSecret(name string) error {
 	if err := requireChezmoi(); err != nil {
 		return err
 	}
@@ -40,11 +41,29 @@ func EditSecret() error {
 		return err
 	}
 	if len(enc) == 0 {
-		return fmt.Errorf("no encrypted files in this repo")
+		fmt.Println("no secrets yet — add one with: casa secrets add <path>")
+		return nil
 	}
 	disp, bySource := displayNames(enc)
-	sel, err := ui.Select("edit which secret?", disp)
-	if err != nil || sel == "" {
+	var sel string
+	if name != "" {
+		var filtered []string
+		for _, d := range disp {
+			if strings.Contains(strings.ToLower(d), strings.ToLower(name)) {
+				filtered = append(filtered, d)
+			}
+		}
+		switch len(filtered) {
+		case 1:
+			sel = filtered[0]
+		case 0:
+			return fmt.Errorf("no secret matches %q", name)
+		default:
+			if sel, err = ui.Select("edit which secret?", filtered); err != nil || sel == "" {
+				return err
+			}
+		}
+	} else if sel, err = ui.Select("edit which secret?", disp); err != nil || sel == "" {
 		return err
 	}
 	source := bySource[sel]
@@ -84,14 +103,21 @@ func EditSecret() error {
 	return nil
 }
 
+// targetLabels converts source paths to readable target paths, falling back to
+// the sources themselves if the conversion fails or is incomplete.
+func targetLabels(sources []string) []string {
+	disp, err := chez.TargetPaths(sources)
+	if err != nil || len(disp) != len(sources) {
+		return sources
+	}
+	return disp
+}
+
 // displayNames maps encrypted source paths to readable target-style names,
 // returning the labels (in order) and a label→source lookup. Falls back to the
 // source paths if the conversion fails.
 func displayNames(sources []string) ([]string, map[string]string) {
-	disp, err := chez.TargetPaths(sources)
-	if err != nil || len(disp) != len(sources) {
-		disp = sources
-	}
+	disp := targetLabels(sources)
 	bySource := make(map[string]string, len(sources))
 	for i, d := range disp {
 		bySource[d] = sources[i]

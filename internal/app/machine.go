@@ -18,8 +18,8 @@ import (
 // username (→ <user>/dotfiles), a user/repo, or a full URL; prefers SSH and
 // falls back to HTTPS; and clones into casa's branded source dir (~/.local/share/casa).
 func Setup(arg string) error {
-	if !chez.Available() {
-		return fmt.Errorf("install chezmoi first: brew install chezmoi")
+	if err := requireChezmoi(); err != nil {
+		return err
 	}
 	if arg == "" {
 		arg = config.Load().Setup.Repo
@@ -127,10 +127,7 @@ func Save(msg string) error {
 	}
 	// Show changes by their readable target paths, not raw source names.
 	sources := changedPaths(porcelain)
-	targets, err := chez.TargetPaths(sources)
-	if err != nil || len(targets) != len(sources) {
-		targets = sources
-	}
+	targets := targetLabels(sources)
 	fmt.Println("changes to save:")
 	for _, t := range targets {
 		fmt.Println("  " + t)
@@ -138,10 +135,7 @@ func Save(msg string) error {
 	if msg == "" {
 		msg = autoMessageFrom(targets)
 	}
-	ok, err := ui.Confirm("commit + push?  “" + msg + "”")
-	if err != nil || !ok {
-		return err
-	}
+	fmt.Println("committing: " + msg)
 	return saveAll(msg)
 }
 
@@ -223,7 +217,7 @@ func Context() error {
 		return rerunPrompts()
 	}
 	sort.Strings(keys)
-	sel, err := ui.MultiSelectPreselected("which contexts are on for this machine?", keys, current)
+	sel, err := ui.MultiSelect("which contexts are on for this machine?", keys, current...)
 	if err != nil {
 		return err
 	}
@@ -282,7 +276,8 @@ func Undo() error {
 	if err := requireChezmoi(); err != nil {
 		return err
 	}
-	last := strings.TrimSpace(mustOut(chez.GitOut("log", "-1", "--oneline")))
+	out, _ := chez.GitOut("log", "-1", "--oneline")
+	last := strings.TrimSpace(out)
 	if last == "" {
 		return fmt.Errorf("nothing to undo")
 	}
@@ -299,8 +294,6 @@ func Undo() error {
 	return chez.Apply()
 }
 
-func mustOut(s string, _ error) string { return s }
-
 // Doctor runs chezmoi's health check.
 func Doctor() error {
 	if err := requireChezmoi(); err != nil {
@@ -314,10 +307,9 @@ func Info() error {
 	if err := requireChezmoi(); err != nil {
 		return err
 	}
-	src, _ := chez.SourceDir()
 	managed, _ := chez.Managed()
 	fmt.Printf("machine:  %s\n", machineName())
-	fmt.Printf("repo:     %s\n", src)
+	fmt.Printf("repo:     %s\n", chez.SourceDir())
 	fmt.Printf("managed:  %d files\n", len(managed))
 	return nil
 }
