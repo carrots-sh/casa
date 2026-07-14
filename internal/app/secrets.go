@@ -85,14 +85,33 @@ func EditSecret(name string) error {
 	if editor == "" {
 		editor = "vi"
 	}
-	c := exec.Command(editor, tmp.Name())
-	c.Stdin, c.Stdout, c.Stderr = os.Stdin, os.Stdout, os.Stderr
-	if err := c.Run(); err != nil {
-		return err
-	}
-	edited, err := os.ReadFile(tmp.Name())
-	if err != nil {
-		return err
+	isTemplate := strings.Contains(source, ".tmpl")
+	var edited []byte
+	for {
+		c := exec.Command(editor, tmp.Name())
+		c.Stdin, c.Stdout, c.Stderr = os.Stdin, os.Stdout, os.Stderr
+		if err := c.Run(); err != nil {
+			return err
+		}
+		if edited, err = os.ReadFile(tmp.Name()); err != nil {
+			return err
+		}
+		if !isTemplate {
+			break
+		}
+		// catch template errors now, not at the next apply
+		terr := chez.ExecuteTemplate(string(edited))
+		if terr == nil {
+			break
+		}
+		fmt.Printf("template error: %v\n", terr)
+		again, err := ui.ConfirmDefault("edit again to fix it?", true)
+		if err != nil {
+			return err
+		}
+		if !again {
+			break // save as-is; the user knows
+		}
 	}
 	if err := chez.EncryptInto(string(edited), source); err != nil {
 		return err
