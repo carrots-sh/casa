@@ -45,10 +45,14 @@ func Menu() error {
 			{row("question", "add a setup question"), func() error { return AddQuestion() }},
 			{row("undo", "revert the last save"), func() error { return Undo() }},
 			{row("setup", "provision from a dotfiles repo"), func() error { return Setup("") }},
+			{row("upgrade", "update casa itself") + upgradeHint(s.upgrade), func() error { return UpgradeSelf() }},
 			{row("doctor", "health check"), func() error { return Doctor() }},
 			{row("info", "machine + repo basics"), func() error { return Info() }},
 		}
 		// urgency bubbling: sync jumps to the front when behind, save above it when unsaved.
+		if s.upgrade != "" {
+			entries = front(entries, row("upgrade", "update casa itself"))
+		}
 		if s.behind > 0 {
 			entries = front(entries, row("sync", "update this machine"))
 		}
@@ -95,6 +99,13 @@ func hint(n int, unit string) string {
 		return ""
 	}
 	return fmt.Sprintf("   (%d %s)", n, unit)
+}
+
+func upgradeHint(tag string) string {
+	if tag == "" {
+		return ""
+	}
+	return "   (" + tag + " is out)"
 }
 
 func report(err error) {

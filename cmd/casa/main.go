@@ -22,6 +22,7 @@ const usage = `casa — easy chezmoi: manage your configs and tools from one fri
 
 usage: casa [command]           (no command opens the interactive menu)
 shortcuts: casa edit [name] · casa save [msg] · casa sync · casa status
+           casa upgrade         update casa itself to the latest release
 
 configs   edit [name]           pick and edit a config (encrypted ones handled transparently)
           track [path]          start managing an existing file (plain, template, or encrypted)
@@ -50,6 +51,7 @@ help, version                   this text / version info
 
 func main() {
 	fillFromBuildInfo()
+	app.Version = version
 	if err := dispatch(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "✗", err)
 		os.Exit(1)
@@ -82,6 +84,8 @@ func dispatch(args []string) error {
 		return app.Sync()
 	case "status":
 		return app.Status()
+	case "upgrade":
+		return app.UpgradeSelf()
 	case "configs":
 		switch arg(args, 1) {
 		case "edit":
