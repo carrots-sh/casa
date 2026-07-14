@@ -224,8 +224,9 @@ func AddEncryptedTemplate(homePath string) error {
 }
 
 // Chattr changes a target's storage attributes (e.g. "+template,-encrypted")
-// by renaming/re-encoding its source.
-func Chattr(mods, homePath string) error { return run("chattr", mods, homePath) }
+// by renaming/re-encoding its source. The "--" keeps a leading -attr from
+// being parsed as a flag.
+func Chattr(mods, homePath string) error { return run("chattr", "--", mods, homePath) }
 
 // Init re-renders the machine config from the source questionnaire (and clones
 // first when a repo is given). Prompts read the terminal unless answered via
@@ -326,7 +327,7 @@ func TargetPaths(sourceRels []string) ([]string, error) {
 	}
 	home, _ := os.UserHomeDir()
 	var rels []string
-	for _, l := range strings.Split(strings.TrimRight(o, "\n"), "\n") {
+	for l := range strings.SplitSeq(strings.TrimRight(o, "\n"), "\n") {
 		l = strings.TrimSpace(l)
 		if l == "" {
 			continue
@@ -354,7 +355,7 @@ func EncryptInto(plaintext, sourceRelPath string) error {
 // NonEmpty splits s into its non-blank lines.
 func NonEmpty(s string) []string {
 	var out []string
-	for _, l := range strings.Split(s, "\n") {
+	for l := range strings.SplitSeq(s, "\n") {
 		if l = strings.TrimRight(l, "\r"); strings.TrimSpace(l) != "" {
 			out = append(out, l)
 		}

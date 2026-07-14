@@ -154,7 +154,7 @@ func Save(msg string) error {
 // changedPaths extracts the source-relative paths from `git status --porcelain`.
 func changedPaths(porcelain string) []string {
 	var out []string
-	for _, l := range strings.Split(porcelain, "\n") {
+	for l := range strings.SplitSeq(porcelain, "\n") {
 		if len(l) < 4 {
 			continue
 		}

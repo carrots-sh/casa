@@ -224,7 +224,7 @@ func resolveDef(q question, data map[string]any) (string, bool) {
 		return "", false
 	}
 	cur := any(data)
-	for _, part := range strings.Split(strings.TrimPrefix(q.def, "."), ".") {
+	for part := range strings.SplitSeq(strings.TrimPrefix(q.def, "."), ".") {
 		m, ok := cur.(map[string]any)
 		if !ok {
 			return "", false
@@ -254,6 +254,7 @@ func askQuestion(q question, cur string, hasCur bool) (string, error) {
 		}
 		return strconv.FormatBool(b), nil
 	case "choice":
+		fmt.Println(q.text) // Select hides its title while filtering — show the question
 		return ui.SelectDefault(q.text, q.choices, def)
 	case "multichoice":
 		var preset []string
@@ -461,7 +462,7 @@ func AddQuestion() error {
 		if err != nil || raw == "" {
 			return err
 		}
-		for _, c := range strings.Split(raw, ",") {
+		for c := range strings.SplitSeq(raw, ",") {
 			if c = strings.TrimSpace(c); c != "" {
 				q.choices = append(q.choices, c)
 			}
@@ -507,7 +508,9 @@ func insertQuestion(path string, q question) error {
 		}
 		call += " (list " + strings.Join(quoted, " ") + ")"
 	}
-	promptLine := fmt.Sprintf("{{- $%s := %s -}}", q.key, call)
+	// left-trim only: a right trim (-}}) would glue the previous rendered
+	// line to whatever follows the insertion point and corrupt the TOML
+	promptLine := fmt.Sprintf("{{- $%s := %s }}", q.key, call)
 
 	var dataLine string
 	switch q.kind {

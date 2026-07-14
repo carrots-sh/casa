@@ -45,7 +45,7 @@ func (b Brewfile) Add(mgr, name string) error {
 	anc := b.anchor(mgr)
 	var out []string
 	inserted := false
-	for _, l := range strings.Split(string(data), "\n") {
+	for l := range strings.SplitSeq(string(data), "\n") {
 		if l == line {
 			return nil
 		}
@@ -69,7 +69,7 @@ func (b Brewfile) Remove(mgr, name string) error {
 	}
 	prefix := fmt.Sprintf("%s %q", mgr, name)
 	var out []string
-	for _, l := range strings.Split(string(data), "\n") {
+	for l := range strings.SplitSeq(string(data), "\n") {
 		if strings.HasPrefix(l, prefix) {
 			continue
 		}

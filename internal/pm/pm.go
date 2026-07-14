@@ -140,7 +140,7 @@ func Search(mgr, query string) []string {
 	case "npm":
 		var out []string
 		for _, l := range lines(capture("npm", "search", query, "--parseable")) {
-			if name := strings.SplitN(l, "\t", 2)[0]; name != "" {
+			if name, _, _ := strings.Cut(l, "\t"); name != "" {
 				out = append(out, name)
 			}
 		}
@@ -182,7 +182,7 @@ func SearchAll(query string) []Result {
 
 func lines(s string) []string {
 	var out []string
-	for _, l := range strings.Split(s, "\n") {
+	for l := range strings.SplitSeq(s, "\n") {
 		if l = strings.TrimSpace(l); l != "" {
 			out = append(out, l)
 		}
