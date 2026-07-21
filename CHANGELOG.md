@@ -4,6 +4,12 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.5.1
+
+- Key backups in the repo are ASCII-armored (base64 text) instead of raw
+  binary — displays and diffs sanely. Existing binary backups stay valid;
+  re-run the backup action to convert.
+
 ## 0.5.0
 
 - **Run scripts are casa-generated, never repo content**: the packages,
