@@ -29,10 +29,12 @@ configs   edit [name]           pick and edit a config (encrypted ones handled t
           storage [name]        change how a file is stored (template/encrypted/…)
           untrack [path]        stop managing a file (keeps it on disk)
           list                  list managed files
-tools     add [manager] [name]  install a package and record it in your brewfile
-          rm                    uninstall package(s) — pick across all managers
-          update                upgrade outdated packages — one, many, or all
-          list                  list recorded packages
+tools     add [manager] [name]  install a tool and record it in your manifest
+          add sh                a tool that ships its own installer (curl | sh)
+          rm                    uninstall tool(s) — pick across all managers
+          update                upgrade outdated tools — one, many, or all
+          list                  list recorded tools
+          import                seed the manifest from what's installed here
 secrets   add [path]            encrypt and start managing a file
           edit [name]           pick a secret, decrypt, edit, re-encrypt
           list                  list encrypted files
@@ -109,6 +111,8 @@ func dispatch(args []string) error {
 			return app.UpdateTools()
 		case "list":
 			return app.ListTools()
+		case "import":
+			return app.ImportTools()
 		}
 	case "secrets":
 		switch arg(args, 1) {

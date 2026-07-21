@@ -44,86 +44,87 @@ func resolve() string {
 	return srcCached
 }
 
-// SetSource overrides the resolved source dir (used after `setup` clones).
-func SetSource(dir string) { srcCached, mirrored = dir, false }
-
-// casaNames maps casa-named special files to the chezmoi names chezmoi reads.
-// casa repos use the casa names; mirror symlinks them so chezmoi still works.
-// ponytail: files only — chezmoi doesn't reliably walk symlinked dirs
-// (.casatemplates etc.); add per-entry copying if anyone needs those.
-var casaNames = map[string]string{
-	".casa.toml.tmpl":    ".chezmoi.toml.tmpl",
-	".casa.yaml.tmpl":    ".chezmoi.yaml.tmpl",
-	".casa.json.tmpl":    ".chezmoi.json.tmpl",
-	".casaignore":        ".chezmoiignore",
-	".casaremove":        ".chezmoiremove",
-	".casaversion":       ".chezmoiversion",
-	".casaexternal.toml": ".chezmoiexternal.toml",
-	".casadata.toml":     ".chezmoidata.toml",
-	".casadata.yaml":     ".chezmoidata.yaml",
-	".casadata.json":     ".chezmoidata.json",
+// mirrors pairs casa-named special files with the chezmoi names chezmoi
+// hardcodes. casa repos commit only the casa names; the chezmoi names are
+// gitignored symlinks recreated here on demand. Repos that use chezmoi names
+// directly are left untouched (the casa file simply doesn't exist).
+// .casadata is a directory — chezmoi follows the symlink for template data.
+var mirrors = [][2]string{
+	{".casa.toml.tmpl", ".chezmoi.toml.tmpl"},
+	{".casa.yaml.tmpl", ".chezmoi.yaml.tmpl"},
+	{".casa.json.tmpl", ".chezmoi.json.tmpl"},
+	{".casaignore", ".chezmoiignore"},
+	{".casaremove", ".chezmoiremove"},
+	{".casaversion", ".chezmoiversion"},
+	{".casaexternal.toml", ".chezmoiexternal.toml"},
+	{".casadata", ".chezmoidata"},
+	{".casadata.toml", ".chezmoidata.toml"},
+	{".casadata.yaml", ".chezmoidata.yaml"},
+	{".casadata.json", ".chezmoidata.json"},
 }
 
-var mirrored bool
-
-// mirror links each casa-named special file to its chezmoi name (gitignored)
-// so the repo reads casa-first while chezmoi finds what it expects.
-func mirror() {
-	if mirrored {
-		return
-	}
-	mirrored = true
-	src := resolve()
+// EnsureMirrors creates any missing chezmoi-named symlinks for casa-named
+// special files in dir, gitignoring the links it creates. Safe to call
+// repeatedly; a user's own real chezmoi-named file is never touched.
+func EnsureMirrors(dir string) {
 	var created []string
-	for casa, chezName := range casaNames {
-		if _, err := os.Lstat(filepath.Join(src, casa)); err != nil {
+	for _, m := range mirrors {
+		casa, chz := m[0], m[1]
+		if _, err := os.Lstat(filepath.Join(dir, casa)); err != nil {
 			continue
 		}
-		link := filepath.Join(src, chezName)
+		link := filepath.Join(dir, chz)
 		if _, err := os.Lstat(link); err == nil {
 			continue // already linked, or the user's own real file
 		}
 		if os.Symlink(casa, link) == nil {
-			created = append(created, chezName)
+			created = append(created, chz)
 		}
 	}
-	if len(created) > 0 {
-		ensureGitignore(src, created)
-	}
+	ensureGitignored(dir, created)
 }
 
-// ensureGitignore appends names to the repo's .gitignore if missing, so the
-// mirrored links never show up in the save flow.
-func ensureGitignore(src string, names []string) {
-	p := filepath.Join(src, ".gitignore")
-	data, _ := os.ReadFile(p)
+// ensureGitignored appends any missing names to dir's .gitignore.
+func ensureGitignored(dir string, names []string) {
+	if len(names) == 0 {
+		return
+	}
+	path := filepath.Join(dir, ".gitignore")
+	data, _ := os.ReadFile(path)
 	have := map[string]bool{}
-	for _, l := range NonEmpty(string(data)) {
+	for l := range strings.SplitSeq(string(data), "\n") {
 		have[strings.TrimSpace(l)] = true
 	}
-	out := string(data)
-	changed := false
+	var missing []string
 	for _, n := range names {
-		if have[n] {
-			continue
+		if !have[n] {
+			missing = append(missing, n)
 		}
-		if out != "" && !strings.HasSuffix(out, "\n") {
-			out += "\n"
-		}
-		out += n + "\n"
-		changed = true
 	}
-	if changed {
-		_ = os.WriteFile(p, []byte(out), 0o644)
+	if len(missing) == 0 {
+		return
 	}
+	s := string(data)
+	if s != "" && !strings.HasSuffix(s, "\n") {
+		s += "\n"
+	}
+	if !strings.Contains(s, "chezmoi-named mirrors") {
+		s += "# chezmoi-named mirrors of the .casa* files (casa recreates them)\n"
+	}
+	s += strings.Join(missing, "\n") + "\n"
+	_ = os.WriteFile(path, []byte(s), 0o644)
 }
+
+// SetSource overrides the resolved source dir (used after `setup` clones).
+func SetSource(dir string) { srcCached = dir }
 
 // cmd builds a chezmoi command pinned to casa's source dir. The --source flag
 // is used (not CHEZMOI_SOURCE_DIR) because some subcommands (e.g. managed)
 // ignore the env var.
 func cmd(args ...string) *exec.Cmd {
-	mirror()
-	return exec.Command("chezmoi", append([]string{"--source", resolve()}, args...)...)
+	src := resolve()
+	EnsureMirrors(src) // self-heal before every chezmoi call (cheap: a few Lstats)
+	return exec.Command("chezmoi", append([]string{"--source", src}, args...)...)
 }
 
 func run(args ...string) error {
