@@ -3,38 +3,12 @@ package app
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/carrots-sh/casa/internal/chez"
+	"github.com/carrots-sh/casa/internal/home"
 	"github.com/carrots-sh/casa/internal/ui"
 )
-
-func homePath(rel string) string {
-	h, _ := os.UserHomeDir()
-	return filepath.Join(h, rel)
-}
-
-func expand(p string) string {
-	if strings.HasPrefix(p, "~/") {
-		h, _ := os.UserHomeDir()
-		return filepath.Join(h, p[2:])
-	}
-	return p
-}
-
-// tilde renders a path for display as ~/…: home-relative paths get the prefix,
-// absolute paths under $HOME get shortened, anything else is left alone.
-func tilde(p string) string {
-	h, _ := os.UserHomeDir()
-	if h != "" && strings.HasPrefix(p, h+string(os.PathSeparator)) {
-		return "~" + p[len(h):]
-	}
-	if p == "" || filepath.IsAbs(p) || strings.HasPrefix(p, "~") {
-		return p
-	}
-	return "~/" + p
-}
 
 // pickManaged resolves query against the managed files: exact match wins,
 // a single substring hit opens directly, several hits show a pre-filtered
@@ -71,7 +45,7 @@ func pickManaged(title, query string) (string, error) {
 	labels := make([]string, len(filtered))
 	byLabel := make(map[string]string, len(filtered))
 	for i, m := range filtered {
-		labels[i] = tilde(m) + badges[m]
+		labels[i] = home.Tilde(m) + badges[m]
 		byLabel[labels[i]] = m
 	}
 	sel, err := ui.Select(title, labels)
@@ -87,10 +61,10 @@ func EditConfig(name string) error {
 	if err != nil || sel == "" {
 		return err
 	}
-	if err := chez.Edit(homePath(sel)); err != nil {
+	if err := chez.Edit(home.Path(sel)); err != nil {
 		return err
 	}
-	fmt.Printf("✓ edited %s\n", tilde(sel))
+	fmt.Printf("✓ edited %s\n", home.Tilde(sel))
 	offerSave("casa: edit " + sel)
 	return nil
 }
@@ -101,26 +75,26 @@ func UntrackFile(path string) error {
 		return err
 	}
 	if path != "" {
-		if _, err := os.Stat(expand(path)); err == nil {
-			path = expand(path)
+		if _, err := os.Stat(home.Expand(path)); err == nil {
+			path = home.Expand(path)
 		} else {
 			sel, err := pickManaged("stop managing which file? (it stays on disk)", path)
 			if err != nil || sel == "" {
 				return err
 			}
-			path = homePath(sel)
+			path = home.Path(sel)
 		}
 	} else {
 		sel, err := pickManaged("stop managing which file? (it stays on disk)", "")
 		if err != nil || sel == "" {
 			return err
 		}
-		path = homePath(sel)
+		path = home.Path(sel)
 	}
 	if err := chez.Forget(path); err != nil {
 		return err
 	}
-	fmt.Printf("✓ no longer managing %s (file kept)\n", tilde(path))
+	fmt.Printf("✓ no longer managing %s (file kept)\n", home.Tilde(path))
 	offerSave("casa: untrack")
 	return nil
 }
@@ -133,7 +107,7 @@ func ListConfigs() error {
 	}
 	badges := storageBadges(managed)
 	for _, m := range managed {
-		fmt.Println(tilde(m) + badges[m])
+		fmt.Println(home.Tilde(m) + badges[m])
 	}
 	return nil
 }

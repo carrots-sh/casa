@@ -31,6 +31,7 @@ configs   edit [name]           pick and edit a config (encrypted ones handled t
           list                  list managed files
 tools     add [manager] [name]  install a tool and record it in your manifest
           add sh                a tool that ships its own installer (curl | sh)
+          add cmd ["command"]   paste any install command — casa detects the manager
           rm                    uninstall tool(s) — pick across all managers
           update                upgrade outdated tools — one, many, or all
           list                  list recorded tools

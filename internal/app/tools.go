@@ -14,66 +14,72 @@ import (
 const shRow = "sh     (a tool with its own installer — curl | sh)"
 
 // AddTool installs a package and records it in the manifest. With no name it
-// searches across all package managers and lets you pick where to install from.
+// searches across all package managers and lets you pick where to install
+// from; "sh" and "cmd" route to the installer/pasted-command flows.
 func AddTool(mgr, name string) error {
 	var err error
-	if mgr == "sh" {
-		return addShTool(name)
+	switch mgr {
+	case "sh":
+		return addShTool(name, "")
+	case "cmd", "command":
+		return addCommand(name)
 	}
-	if name == "" {
-		if mgr, name, err = searchPick(mgr); err != nil || name == "" {
+	if name == "" && mgr == "" {
+		if mgr, name, err = searchPick(); err != nil || mgr == "" {
 			return err
 		}
-		if mgr == "sh" {
-			return addShTool("")
+		switch mgr {
+		case "sh":
+			return addShTool("", "")
+		case "cmd":
+			return addCommand("")
 		}
-	} else if mgr == "" {
-		opts := append(append([]string{}, pm.Managers...), "sh")
+	}
+	if mgr == "" {
+		opts := append(pm.Names(), "sh", "command")
 		if mgr, err = ui.Select("which package manager?", opts); err != nil || mgr == "" {
 			return err
 		}
-		if mgr == "sh" {
-			return addShTool(name)
+		switch mgr {
+		case "sh":
+			return addShTool(name, "")
+		case "command":
+			return addCommand("")
+		}
+	}
+	pmgr, ok := pm.ByName(mgr)
+	if !ok {
+		return fmt.Errorf("unknown manager %q", mgr)
+	}
+	// managers without a search (go, uv, tap) take the package directly
+	if name == "" {
+		if name, err = ui.Input("package for " + mgr + " (e.g. golang.org/x/tools/gopls)"); err != nil || name == "" {
+			return err
 		}
 	}
 	fmt.Printf("installing %s via %s...\n", name, mgr)
-	if err := pm.Install(mgr, name); err != nil {
+	if err := pmgr.Install(name); err != nil {
 		return fmt.Errorf("install failed: %w", err)
 	}
-	m, ok, err := ensurePkg()
-	if err != nil {
-		return err
-	}
-	if !ok {
-		fmt.Printf("✓ installed %s (no manifest, so not recorded)\n", name)
-		return nil
-	}
-	section := manifest.SectionFor(mgr)
-	if err := m.Add(section, name); err != nil {
-		return err
-	}
-	fmt.Printf("✓ installed and recorded: %s %q\n", section, name)
-	offerSave(fmt.Sprintf("casa: add %s %s", mgr, name))
-	return nil
+	return recordTool(mgr, name)
 }
 
 // searchPick prompts for a query, searches every manager in parallel, and
-// returns the (manager, name) the user picks. If mgr is given, it scopes the
-// search to that one manager. The sh option rides along as a synthetic row so
-// self-installing tools are reachable from the menu's plain "add".
-func searchPick(mgr string) (string, string, error) {
-	query, err := ui.Input("search packages (" + strings.Join(pm.Searchable, ", ") + ")")
+// returns the (manager, name) the user picks. A pasted install command is
+// detected and routed straight to the command flow; sh and command rows ride
+// along as synthetic results so every flow is reachable from plain "add".
+func searchPick() (string, string, error) {
+	query, err := ui.Input("search (" + strings.Join(pm.Searchable(), ", ") + ") — or paste an install command")
 	if err != nil || query == "" {
 		return "", "", err
 	}
-	var results []pm.Result
-	if mgr != "" {
-		for _, n := range pm.Search(mgr, query) {
-			results = append(results, pm.Result{Mgr: mgr, Name: n})
+	if mgr, _ := parseInstallCommand(query); mgr != "" {
+		if err := addCommand(query); err != nil {
+			return "", "", err
 		}
-	} else {
-		results = pm.SearchAll(query)
+		return "", "", nil // handled
 	}
+	results := pm.SearchAll(query)
 	labels := make([]string, len(results))
 	byLabel := map[string]pm.Result{}
 	for i, r := range results {
@@ -81,18 +87,16 @@ func searchPick(mgr string) (string, string, error) {
 		labels[i] = l
 		byLabel[l] = r
 	}
-	if mgr == "" {
-		labels = append(labels, shRow)
-	}
-	if len(labels) == 0 {
-		return "", "", fmt.Errorf("no packages found for %q", query)
-	}
+	labels = append(labels, shRow, cmdRow)
 	sel, err := ui.Select("install which?", labels)
 	if err != nil || sel == "" {
 		return "", "", err
 	}
-	if sel == shRow {
-		return "sh", "sh", nil // name is a placeholder; addShTool prompts for everything
+	switch sel {
+	case shRow:
+		return "sh", "", nil
+	case cmdRow:
+		return "cmd", "", nil
 	}
 	r := byLabel[sel]
 	return r.Mgr, r.Name, nil
@@ -146,8 +150,10 @@ func RemoveTools() error {
 			removeShTool(m, t.name)
 			continue
 		}
-		if err := pm.Uninstall(manifest.ManagerFor(t.section), t.name); err != nil {
-			fmt.Printf("  (uninstall errored: %v; removing from manifest anyway)\n", err)
+		if m, ok := pm.ByName(manifest.ManagerFor(t.section)); ok {
+			if err := m.Uninstall(t.name); err != nil {
+				fmt.Printf("  (uninstall errored: %v; removing from manifest anyway)\n", err)
+			}
 		}
 		_ = m.Remove(t.section, t.name)
 	}
@@ -159,15 +165,7 @@ func RemoveTools() error {
 // UpdateTools lists outdated packages and upgrades the chosen ones. sh tools
 // appear only when they declared a self-update command.
 func UpdateTools() error {
-	items := pm.Outdated()
-	shTools, _ := mf().ShTools()
-	updatable := map[string]string{}
-	for _, t := range shTools {
-		if t.Update != "" {
-			updatable[t.Bin] = t.Update
-			items = append(items, "sh     "+t.Bin)
-		}
-	}
+	items, shUpdates := updatableItems()
 	if len(items) == 0 {
 		fmt.Println("✓ nothing outdated (brew, cask, npm)")
 		return nil
@@ -185,45 +183,56 @@ func UpdateTools() error {
 		if len(f) == 0 {
 			continue
 		}
-		switch f[0] {
-		case "uv", "cargo":
-			fmt.Printf("upgrading all %s packages...\n", f[0])
-			if err := pm.UpgradeAll(f[0]); err != nil {
-				fmt.Printf("  %v\n", err)
+		if allSel && (f[0] == "brew" || f[0] == "cask") {
+			if !brewDone {
+				brewDone = true
+				fmt.Println("upgrading all brew packages...")
+				report(pm.UpgradeAllBrew())
 			}
-		case "sh":
-			if len(f) < 2 {
-				continue
-			}
-			fmt.Printf("updating %s...\n", f[1])
-			if err := runShell("sh", "-c", updatable[f[1]]); err != nil {
-				fmt.Printf("  %v\n", err)
-			}
-		case "brew", "cask":
-			if allSel {
-				if !brewDone {
-					brewDone = true
-					fmt.Println("upgrading all brew packages...")
-					if err := pm.UpgradeAllBrew(); err != nil {
-						fmt.Printf("  %v\n", err)
-					}
-				}
-				continue
-			}
-			fallthrough
-		default:
-			if len(f) < 2 {
-				continue
-			}
-			fmt.Printf("upgrading %s (%s)...\n", f[1], f[0])
-			if err := pm.Upgrade(f[0], f[1]); err != nil {
-				fmt.Printf("  %v\n", err)
-			}
+			continue
 		}
+		applyUpdate(f, shUpdates)
 	}
 	invalidateStatus()
 	fmt.Println("✓ updates applied")
 	return nil
+}
+
+// updatableItems builds the update picker rows: per-package outdated entries
+// plus sh tools that declared a self-update command (mapped bin → command).
+func updatableItems() ([]string, map[string]string) {
+	items := pm.Outdated()
+	shTools, _ := mf().ShTools()
+	shUpdates := map[string]string{}
+	for _, t := range shTools {
+		if t.Update != "" {
+			shUpdates[t.Bin] = t.Update
+			items = append(items, "sh     "+t.Bin)
+		}
+	}
+	return items, shUpdates
+}
+
+// applyUpdate runs one picked update row ("mgr name" or a bulk-upgrade row).
+func applyUpdate(f []string, shUpdates map[string]string) {
+	m, _ := pm.ByName(f[0])
+	switch {
+	case f[0] == "sh" && len(f) >= 2:
+		fmt.Printf("updating %s...\n", f[1])
+		report(runShell("sh", "-c", shUpdates[f[1]]))
+	case m == nil:
+		return
+	default:
+		if b, ok := m.(pm.BulkUpgrader); ok {
+			fmt.Printf("upgrading all %s packages...\n", f[0])
+			report(b.UpgradeAll())
+			return
+		}
+		if o, ok := m.(pm.Outdater); ok && len(f) >= 2 {
+			fmt.Printf("upgrading %s (%s)...\n", f[1], f[0])
+			report(o.Upgrade(f[1]))
+		}
+	}
 }
 
 // ListTools prints everything recorded, grouped by section.

@@ -47,6 +47,36 @@ func resolve() string {
 // SetSource overrides the resolved source dir (used after `setup` clones).
 func SetSource(dir string) { srcCached = dir }
 
+// Exec is the boundary to the chezmoi binary — the one seam a test can swap
+// (SetExec) to observe or fake chezmoi without a real repo.
+type Exec interface {
+	Run(args ...string) error           // streams to the terminal
+	Out(args ...string) (string, error) // captures stdout
+}
+
+var execer Exec = cliExec{}
+
+// SetExec replaces the chezmoi executor (tests); returns a restore func.
+func SetExec(e Exec) func() {
+	old := execer
+	execer = e
+	return func() { execer = old }
+}
+
+// cliExec runs the real chezmoi CLI.
+type cliExec struct{}
+
+func (cliExec) Run(args ...string) error {
+	c := cmd(args...)
+	c.Stdout, c.Stderr, c.Stdin = os.Stdout, os.Stderr, os.Stdin
+	return c.Run()
+}
+
+func (cliExec) Out(args ...string) (string, error) {
+	o, err := cmd(args...).Output()
+	return string(o), err
+}
+
 // cmd builds a chezmoi command pinned to casa's source dir. The --source flag
 // is used (not CHEZMOI_SOURCE_DIR) because some subcommands (e.g. managed)
 // ignore the env var.
@@ -56,16 +86,8 @@ func cmd(args ...string) *exec.Cmd {
 	return exec.Command("chezmoi", append([]string{"--source", src}, args...)...)
 }
 
-func run(args ...string) error {
-	c := cmd(args...)
-	c.Stdout, c.Stderr, c.Stdin = os.Stdout, os.Stderr, os.Stdin
-	return c.Run()
-}
-
-func out(args ...string) (string, error) {
-	o, err := cmd(args...).Output()
-	return string(o), err
-}
+func run(args ...string) error           { return execer.Run(args...) }
+func out(args ...string) (string, error) { return execer.Out(args...) }
 
 // Available reports whether the chezmoi CLI is on PATH.
 func Available() bool {

@@ -10,10 +10,35 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
+
+	"github.com/carrots-sh/casa/internal/home"
 )
 
 // errCancel is the sentinel run reports when the user presses esc.
 var errCancel = errors.New("cancelled")
+
+// Prompter asks the user things. The default renders huh forms in the
+// terminal; tests swap in a scripted implementation via SetPrompter. Backed
+// out / cancelled prompts return zero values with a nil error.
+type Prompter interface {
+	Select(title string, opts []string, def string) (string, error)
+	MultiSelect(title string, opts []string, preselected []string) ([]string, error)
+	Input(title, def string) (string, error)
+	Path(title string) (string, error)
+	Confirm(title string, def bool) (bool, error)
+}
+
+var active Prompter = huhPrompter{}
+
+// SetPrompter replaces the prompter (tests); returns a restore func.
+func SetPrompter(p Prompter) func() {
+	old := active
+	active = p
+	return func() { active = old }
+}
+
+// huhPrompter renders real terminal forms.
+type huhPrompter struct{}
 
 // run executes a form. Esc (and, on list fields, ←) cancels the current
 // prompt (a soft back: callers treat the returned zero value as cancel);
@@ -95,8 +120,33 @@ func theme() huh.Theme {
 
 // Select prompts for a single choice from a filterable list.
 func Select(title string, opts []string) (string, error) {
-	return SelectDefault(title, opts, "")
+	return active.Select(title, opts, "")
 }
+
+// SelectDefault is Select with the cursor starting on def (when present).
+func SelectDefault(title string, opts []string, def string) (string, error) {
+	return active.Select(title, opts, def)
+}
+
+// MultiSelect prompts for zero or more choices from a filterable list.
+func MultiSelect(title string, opts []string, selected ...string) ([]string, error) {
+	return active.MultiSelect(title, opts, selected)
+}
+
+// Input prompts for free text.
+func Input(title string) (string, error) { return active.Input(title, "") }
+
+// InputDefault prompts for free text, prefilled with an editable default.
+func InputDefault(title, def string) (string, error) { return active.Input(title, def) }
+
+// PathInput prompts for a filesystem path with as-you-type completion.
+func PathInput(title string) (string, error) { return active.Path(title) }
+
+// Confirm prompts yes/no.
+func Confirm(title string) (bool, error) { return active.Confirm(title, false) }
+
+// ConfirmDefault is Confirm starting on the given answer.
+func ConfirmDefault(title string, def bool) (bool, error) { return active.Confirm(title, def) }
 
 // height caps long lists so they scroll instead of flooding the screen; short
 // lists get 0 = unset, which makes huh size the viewport to the options (no
@@ -118,8 +168,7 @@ func multiHeight(n int) int {
 	return n + 1
 }
 
-// SelectDefault is Select with the cursor starting on def (when present).
-func SelectDefault(title string, opts []string, def string) (string, error) {
+func (huhPrompter) Select(title string, opts []string, def string) (string, error) {
 	v := def
 	err := run(huh.NewForm(huh.NewGroup(
 		huh.NewSelect[string]().
@@ -135,9 +184,8 @@ func SelectDefault(title string, opts []string, def string) (string, error) {
 	return v, err
 }
 
-// MultiSelect prompts for zero or more choices from a filterable list.
-func MultiSelect(title string, opts []string, selected ...string) ([]string, error) {
-	v := append([]string{}, selected...)
+func (huhPrompter) MultiSelect(title string, opts []string, preselected []string) ([]string, error) {
+	v := append([]string{}, preselected...)
 	err := run(huh.NewForm(huh.NewGroup(
 		huh.NewMultiSelect[string]().
 			Title(title).
@@ -152,9 +200,9 @@ func MultiSelect(title string, opts []string, selected ...string) ([]string, err
 	return v, err
 }
 
-// PathInput prompts for a filesystem path with as-you-type completion
+// Path prompts for a filesystem path with as-you-type completion
 // (suggestions come from the directory being typed; tab/→ accepts).
-func PathInput(title string) (string, error) {
+func (huhPrompter) Path(title string) (string, error) {
 	var v string
 	err := run(huh.NewForm(huh.NewGroup(
 		huh.NewInput().
@@ -184,12 +232,7 @@ func pathSuggestions(typed string) []string {
 	}
 	typedDir := typed[:i+1] // up to and including the slash, exactly as typed
 	base := typed[i+1:]
-	dir := typedDir
-	if strings.HasPrefix(dir, "~/") {
-		h, _ := os.UserHomeDir()
-		dir = h + dir[1:]
-	}
-	ents, err := os.ReadDir(dir)
+	ents, err := os.ReadDir(home.Expand(typedDir))
 	if err != nil {
 		return nil
 	}
@@ -211,13 +254,7 @@ func pathSuggestions(typed string) []string {
 	return out
 }
 
-// Input prompts for free text.
-func Input(title string) (string, error) {
-	return InputDefault(title, "")
-}
-
-// InputDefault prompts for free text, prefilled with an editable default.
-func InputDefault(title, def string) (string, error) {
+func (huhPrompter) Input(title, def string) (string, error) {
 	v := def
 	err := run(huh.NewForm(huh.NewGroup(
 		huh.NewInput().Title(title).Value(&v),
@@ -228,13 +265,8 @@ func InputDefault(title, def string) (string, error) {
 	return v, err
 }
 
-// Confirm prompts yes/no. CASA_YES=1 answers yes without prompting (scripting/tests).
-func Confirm(title string) (bool, error) {
-	return ConfirmDefault(title, false)
-}
-
-// ConfirmDefault is Confirm starting on the given answer.
-func ConfirmDefault(title string, def bool) (bool, error) {
+// Confirm asks yes/no. CASA_YES=1 answers yes without prompting (scripting).
+func (huhPrompter) Confirm(title string, def bool) (bool, error) {
 	if os.Getenv("CASA_YES") == "1" {
 		fmt.Println(title + "  → yes (CASA_YES)")
 		return true, nil

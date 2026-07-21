@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/carrots-sh/casa/internal/chez"
+	"github.com/carrots-sh/casa/internal/home"
 	"github.com/carrots-sh/casa/internal/ui"
 )
 
@@ -18,7 +19,7 @@ func TrackFile(path string) error {
 		return err
 	}
 	if path != "" {
-		if err := trackOne(expand(path)); err != nil {
+		if err := trackOne(home.Expand(path)); err != nil {
 			return err
 		}
 		offerSave("casa: track " + filepath.Base(path))
@@ -30,19 +31,19 @@ func TrackFile(path string) error {
 	const other = "another file · type a path"
 	labels := []string{}
 	for _, rel := range unmanagedCommonDotfiles() {
-		labels = append(labels, tilde(rel))
+		labels = append(labels, home.Tilde(rel))
 	}
 	labels = append(labels, other)
 	sel, err := ui.Select("track which file?", labels)
 	if err != nil || sel == "" {
 		return err
 	}
-	p := expand(sel)
+	p := home.Expand(sel)
 	if sel == other {
 		if p, err = ui.PathInput("path of the file to start managing"); err != nil || p == "" {
 			return err
 		}
-		p = expand(p)
+		p = home.Expand(p)
 	}
 	if err := trackOne(p); err != nil {
 		return err
@@ -87,7 +88,7 @@ func trackOne(abs string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("✓ now managing %s (%s)\n", tilde(abs), strings.TrimSpace(strings.SplitN(choice, "·", 2)[0]))
+	fmt.Printf("✓ now managing %s (%s)\n", home.Tilde(abs), strings.TrimSpace(strings.SplitN(choice, "·", 2)[0]))
 	return nil
 }
 

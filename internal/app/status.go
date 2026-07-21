@@ -12,17 +12,19 @@ import (
 )
 
 type statusInfo struct {
-	machine string
-	toSave  int    // uncommitted changes in the repo
-	behind  int    // commits behind the remote
-	updates int    // outdated packages (-1 = not computed yet)
-	upgrade string // newer casa release tag, "" if current (or unknown yet)
+	machine    string
+	toSave     int    // uncommitted changes in the repo
+	behind     int    // commits behind the remote
+	updates    int    // outdated packages (-1 = not computed yet)
+	unrecorded int    // installed here but missing from the manifest
+	upgrade    string // newer casa release tag, "" if current (or unknown yet)
 }
 
 var (
 	stMu       sync.Mutex
 	cheapCache *statusInfo // git-derived hints (fast); nil = stale
 	updCache   = -1        // brew/npm outdated count; -1 = unknown
+	unrecCache = -1        // manifest drift count; -1 = unknown
 	updBusy    bool        // a background outdated check is running
 	selfTag    string      // newer casa release, filled by a background check
 	selfBusy   bool
@@ -34,6 +36,7 @@ func invalidateStatus() {
 	stMu.Lock()
 	cheapCache = nil
 	updCache = -1
+	unrecCache = -1
 	stMu.Unlock()
 }
 
@@ -46,8 +49,9 @@ func computeStatus() statusInfo {
 		updBusy = true
 		go func() {
 			n := len(pm.Outdated())
+			d := len(unrecordedPairs(mf()))
 			stMu.Lock()
-			updCache, updBusy = n, false
+			updCache, unrecCache, updBusy = n, d, false
 			stMu.Unlock()
 		}()
 	}
@@ -66,12 +70,13 @@ func computeStatus() statusInfo {
 	}
 	self := selfTag
 	upd := updCache
+	unrec := unrecCache
 	cached := cheapCache
 	stMu.Unlock()
 
 	if cached != nil {
 		s := *cached
-		s.updates, s.upgrade = upd, self
+		s.updates, s.unrecorded, s.upgrade = upd, unrec, self
 		return s
 	}
 
@@ -88,7 +93,7 @@ func computeStatus() statusInfo {
 	cheapCache = &cp
 	stMu.Unlock()
 
-	s.updates, s.upgrade = upd, self
+	s.updates, s.unrecorded, s.upgrade = upd, unrec, self
 	return s
 }
 

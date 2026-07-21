@@ -60,8 +60,8 @@ func ensurePkg() (manifest.Manifest, bool, error) {
 	return m, true, nil
 }
 
-// ImportTools seeds the manifest from everything installed on this machine
-// (idempotent — already-recorded packages are skipped).
+// ImportTools records what's installed on this machine but missing from the
+// manifest — a multiselect over the drift, everything preselected.
 func ImportTools() error {
 	if err := requireChezmoi(); err != nil {
 		return err
@@ -70,7 +70,33 @@ func ImportTools() error {
 	if err != nil || !ok {
 		return err
 	}
-	importMachine(m)
+	drift := unrecordedPairs(m)
+	if len(drift) == 0 {
+		fmt.Println("✓ everything installed here is already in the manifest")
+		return nil
+	}
+	labels := make([]string, len(drift))
+	byLabel := map[string]pm.Result{}
+	for i, r := range drift {
+		l := fmt.Sprintf("%-6s %s", r.Mgr, r.Name)
+		labels[i] = l
+		byLabel[l] = r
+	}
+	sel, err := ui.MultiSelect("record which? (installed here, not in the manifest)", labels, labels...)
+	if err != nil || len(sel) == 0 {
+		return err
+	}
+	n := 0
+	for _, l := range sel {
+		r := byLabel[l]
+		if err := m.Add(manifest.SectionFor(r.Mgr), r.Name); err != nil {
+			fmt.Printf("  (couldn't record %s %q: %v)\n", r.Mgr, r.Name, err)
+			continue
+		}
+		n++
+	}
+	invalidateStatus()
+	fmt.Printf("✓ recorded %d tool(s)\n", n)
 	offerSave("casa: import installed tools")
 	return nil
 }
@@ -78,27 +104,27 @@ func ImportTools() error {
 // importMachine scans each package manager and records what it finds.
 func importMachine(m manifest.Manifest) {
 	total := 0
-	for _, mgr := range []string{"tap", "brew", "cask", "go", "uv", "npm", "cargo"} {
-		section := manifest.SectionFor(mgr)
+	for _, mgr := range pm.Managers {
+		section := manifest.SectionFor(mgr.Name())
 		existing, _ := m.List(section)
 		have := map[string]bool{}
 		for _, e := range existing {
 			have[e] = true
 		}
 		n := 0
-		for _, name := range pm.Installed(mgr) {
+		for _, name := range mgr.Installed() {
 			if have[name] {
 				continue
 			}
 			if err := m.Add(section, name); err != nil {
-				fmt.Printf("  (couldn't record %s %q: %v)\n", mgr, name, err)
+				fmt.Printf("  (couldn't record %s %q: %v)\n", mgr.Name(), name, err)
 				continue
 			}
 			have[name] = true
 			n++
 		}
 		if n > 0 {
-			fmt.Printf("  + %d from %s\n", n, mgr)
+			fmt.Printf("  + %d from %s\n", n, mgr.Name())
 			total += n
 		}
 	}

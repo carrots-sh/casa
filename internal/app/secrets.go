@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/carrots-sh/casa/internal/chez"
+	"github.com/carrots-sh/casa/internal/home"
 	"github.com/carrots-sh/casa/internal/ui"
 )
 
@@ -22,10 +23,10 @@ func AddSecret(path string) error {
 			return err
 		}
 	}
-	if err := chez.AddEncrypt(expand(path)); err != nil {
+	if err := chez.AddEncrypt(home.Expand(path)); err != nil {
 		return err
 	}
-	fmt.Printf("✓ encrypted and now managing %s\n", tilde(expand(path)))
+	fmt.Printf("✓ encrypted and now managing %s\n", home.Tilde(home.Expand(path)))
 	offerSave("casa: add secret " + filepath.Base(path))
 	return nil
 }
@@ -130,7 +131,7 @@ func targetLabels(sources []string) []string {
 		return sources
 	}
 	for i, d := range disp {
-		disp[i] = tilde(d)
+		disp[i] = home.Tilde(d)
 	}
 	return disp
 }

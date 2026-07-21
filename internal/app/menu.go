@@ -44,7 +44,7 @@ func Menu() error {
 				{"add", "install a tool", "", func() error { return AddTool("", "") }},
 				{"update", "upgrade outdated tools", hint(s.updates, "updates"), func() error { return UpdateTools() }},
 				{"remove", "uninstall tools", "", func() error { return RemoveTools() }},
-				{"import", "record what's installed here", "", func() error { return ImportTools() }},
+				{"import", "record what's installed here", hint(s.unrecorded, "to record"), func() error { return ImportTools() }},
 				{"trust", "pick which taps are trusted", "", func() error { return TrustTaps() }},
 				{"list tools", "list recorded tools", "", func() error { return ListTools() }},
 			}},

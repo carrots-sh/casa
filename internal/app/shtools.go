@@ -17,10 +17,13 @@ var binGuess = regexp.MustCompile(`https?://(?:www\.)?([a-z0-9-]+)\.`)
 
 // addShTool records a tool that ships its own installer: run the one-liner
 // once, then declare it in [[packages.sh]] so every machine gets it on apply.
-func addShTool(bin string) error {
-	install, err := ui.Input("install command (e.g. curl -fsSL https://herdr.dev/install.sh | sh)")
-	if err != nil || install == "" {
-		return err
+func addShTool(bin, install string) error {
+	var err error
+	if install == "" {
+		install, err = ui.Input("install command (e.g. curl -fsSL https://herdr.dev/install.sh | sh)")
+		if err != nil || install == "" {
+			return err
+		}
 	}
 	if bin == "" {
 		guess := ""

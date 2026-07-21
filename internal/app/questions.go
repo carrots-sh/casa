@@ -32,8 +32,29 @@ func Answers(name string) error {
 		return nil
 	}
 	data, _ := chez.Data()
+	sel, byLabel, err := pickAnswerTarget(qs, data, name)
+	if err != nil || sel == "" {
+		return err
+	}
+	ans, ok, err := gatherAnswers(qs, data, sel, byLabel)
+	if err != nil || !ok {
+		return err
+	}
+	fmt.Println("updating this machine's answers...")
+	if err := chez.Init(initFlags(qs, ans, true)...); err != nil {
+		return err
+	}
+	invalidateStatus()
+	fmt.Println("applying...")
+	return chez.Apply()
+}
 
-	const allLabel = "everything · ask all questions again"
+// allLabel is the "re-ask everything" row in the answers picker.
+const allLabel = "everything · ask all questions again"
+
+// pickAnswerTarget picks which answer to change: the named question when name
+// is given (fuzzy, picker on multiple hits), else a picker over all of them.
+func pickAnswerTarget(qs []question, data map[string]any, name string) (string, map[string]question, error) {
 	labels := []string{}
 	byLabel := map[string]question{}
 	for _, q := range qs {
@@ -46,29 +67,32 @@ func Answers(name string) error {
 	}
 	labels = append(labels, allLabel)
 
-	var sel string
-	if name != "" {
-		var hits []string
-		for _, l := range labels[:len(labels)-1] {
-			q := byLabel[l]
-			if strings.Contains(strings.ToLower(q.text+" "+q.key), strings.ToLower(name)) {
-				hits = append(hits, l)
-			}
-		}
-		switch len(hits) {
-		case 1:
-			sel = hits[0]
-		case 0:
-			return fmt.Errorf("no setup question matches %q", name)
-		default:
-			if sel, err = ui.Select("change which answer?", hits); err != nil || sel == "" {
-				return err
-			}
-		}
-	} else if sel, err = ui.Select("change which answer?", labels); err != nil || sel == "" {
-		return err
+	if name == "" {
+		sel, err := ui.Select("change which answer?", labels)
+		return sel, byLabel, err
 	}
+	var hits []string
+	for _, l := range labels[:len(labels)-1] {
+		q := byLabel[l]
+		if strings.Contains(strings.ToLower(q.text+" "+q.key), strings.ToLower(name)) {
+			hits = append(hits, l)
+		}
+	}
+	switch len(hits) {
+	case 1:
+		return hits[0], byLabel, nil
+	case 0:
+		return "", nil, fmt.Errorf("no setup question matches %q", name)
+	default:
+		sel, err := ui.Select("change which answer?", hits)
+		return sel, byLabel, err
+	}
+}
 
+// gatherAnswers asks the selected question(s) and passes every other stored
+// answer through unchanged so chezmoi won't re-ask. ok=false means the user
+// backed out.
+func gatherAnswers(qs []question, data map[string]any, sel string, byLabel map[string]question) (map[string]string, bool, error) {
 	ans := map[string]string{}
 	for _, q := range qs {
 		cur, has := currentValue(data, q)
@@ -79,23 +103,17 @@ func Answers(name string) error {
 			}
 			v, err := askQuestion(q, pre, hasPre)
 			if err != nil {
-				return err
+				return nil, false, err
 			}
 			if v == "" && q.kind != "multichoice" && q.kind != "string" {
-				return nil // backed out
+				return nil, false, nil // backed out
 			}
 			ans[q.text] = v
 		} else if has {
-			ans[q.text] = cur // pass through unchanged so chezmoi won't re-ask
+			ans[q.text] = cur
 		}
 	}
-	fmt.Println("updating this machine's answers...")
-	if err := chez.Init(initFlags(qs, ans, true)...); err != nil {
-		return err
-	}
-	invalidateStatus()
-	fmt.Println("applying...")
-	return chez.Apply()
+	return ans, true, nil
 }
 
 // askSetupQuestions runs the repo questionnaire in casa's UI and renders the

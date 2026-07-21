@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/carrots-sh/casa/internal/chez"
+	"github.com/carrots-sh/casa/internal/home"
 	"github.com/carrots-sh/casa/internal/ui"
 )
 
@@ -33,7 +34,7 @@ func ChangeStorage(name string) error {
 			preset = append(preset, a)
 		}
 	}
-	want, err := ui.MultiSelect("how should "+tilde(sel)+" be stored?", attrOpts, preset...)
+	want, err := ui.MultiSelect("how should "+home.Tilde(sel)+" be stored?", attrOpts, preset...)
 	if err != nil {
 		return err
 	}
@@ -54,13 +55,13 @@ func ChangeStorage(name string) error {
 		fmt.Println("nothing to change.")
 		return nil
 	}
-	if err := chez.Chattr(strings.Join(mods, ","), homePath(sel)); err != nil {
+	if err := chez.Chattr(strings.Join(mods, ","), home.Path(sel)); err != nil {
 		return err
 	}
 	if len(want) == 0 {
-		fmt.Printf("✓ %s is now stored plain\n", tilde(sel))
+		fmt.Printf("✓ %s is now stored plain\n", home.Tilde(sel))
 	} else {
-		fmt.Printf("✓ %s is now stored: %s\n", tilde(sel), strings.Join(want, ", "))
+		fmt.Printf("✓ %s is now stored: %s\n", home.Tilde(sel), strings.Join(want, ", "))
 	}
 	if wantSet["template"] && !cur["template"] {
 		fmt.Printf("  tip: casa edit %s to add {{ … }} per-machine bits\n", filepath.Base(sel))
@@ -71,7 +72,7 @@ func ChangeStorage(name string) error {
 
 // sourceAttrs reads a managed target's storage attributes from its source filename.
 func sourceAttrs(target string) (map[string]bool, error) {
-	srcs, err := chez.SourcePaths([]string{homePath(target)})
+	srcs, err := chez.SourcePaths([]string{home.Path(target)})
 	if err != nil || len(srcs) != 1 {
 		return nil, fmt.Errorf("couldn't find the source of %s", target)
 	}
@@ -95,7 +96,7 @@ func storageBadges(targets []string) map[string]string {
 	out := map[string]string{}
 	homes := make([]string, len(targets))
 	for i, t := range targets {
-		homes[i] = homePath(t)
+		homes[i] = home.Path(t)
 	}
 	srcs, err := chez.SourcePaths(homes)
 	if err != nil || len(srcs) != len(targets) {
