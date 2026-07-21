@@ -4,6 +4,19 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.4.0
+
+- **Fresh machines are fully self-sufficient**: `machine setup` offers to
+  install Homebrew after the questionnaire (declining just skips packages),
+  and every casa-side file in a repo is now reproducible from nothing —
+  manifest + run scripts, the `[age]` block, and key restore.
+- **Key backup in the repo** (`secrets keys` → *backup to repo*): the private
+  identity is passphrase-encrypted to `.casa/keys/<name>.key.age` (never a
+  chezmoi target, safe to commit) and a generated `run_once` script restores
+  backups into `~/.config/casa/keys` on new machines before anything needs
+  decrypting. Deleting a key also deletes its backup, so a fresh apply never
+  prompts for a dead key.
+
 ## 0.3.0
 
 - **Registry-free keys**: a key IS a private identity file in
