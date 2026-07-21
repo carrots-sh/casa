@@ -40,6 +40,7 @@ tools     add [manager] [name]  install a tool and record it in your manifest
           trust                 pick which taps update without prompting
 secrets   add [path]            encrypt and start managing a file
           edit [name]           pick a secret, decrypt, edit, re-encrypt
+          keys                  encryption keys — create, default, delete, doppler
           list                  list encrypted files
 machine   setup [repo]          provision this machine from your dotfiles repo
           sync                  upgrade packages, then pull + apply dotfiles
@@ -126,6 +127,8 @@ func dispatch(args []string) error {
 			return app.AddSecret(arg(args, 2))
 		case "edit":
 			return app.EditSecret(arg(args, 2))
+		case "keys":
+			return app.Keys()
 		case "list":
 			return app.ListSecrets()
 		}

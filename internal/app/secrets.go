@@ -7,26 +7,46 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/carrots-sh/casa/internal/agekey"
 	"github.com/carrots-sh/casa/internal/chez"
 	"github.com/carrots-sh/casa/internal/home"
 	"github.com/carrots-sh/casa/internal/ui"
 )
 
-// AddSecret starts managing a file, encrypted.
+// AddSecret starts managing a file, encrypted — with the default key, or a
+// picked one when several are registered.
 func AddSecret(path string) error {
 	if err := requireChezmoi(); err != nil {
 		return err
 	}
 	if path == "" {
 		var err error
-		if path, err = ui.Input("path of the file to encrypt + manage"); err != nil || path == "" {
+		if path, err = ui.PathInput("path of the file to encrypt + manage"); err != nil || path == "" {
 			return err
 		}
 	}
-	if err := chez.AddEncrypt(home.Expand(path)); err != nil {
+	abs := home.Expand(path)
+	r, err := ensureKeys()
+	if err != nil {
 		return err
 	}
-	fmt.Printf("✓ encrypted and now managing %s\n", home.Tilde(home.Expand(path)))
+	k, err := pickEncryptKey(r)
+	if err != nil || k.Name == "" {
+		return err
+	}
+	plain, err := os.ReadFile(abs)
+	if err != nil {
+		return err
+	}
+	if err := chez.AddEncrypt(abs); err != nil { // seals with the default key
+		return err
+	}
+	if k.Name != r.Default {
+		if err := reEncryptSource(abs, plain, k); err != nil {
+			return err
+		}
+	}
+	fmt.Printf("✓ encrypted with %s and now managing %s\n", k.Name, home.Tilde(abs))
 	offerSave("casa: add secret " + filepath.Base(path))
 	return nil
 }
@@ -114,13 +134,33 @@ func EditSecret(name string) error {
 			break // save as-is; the user knows
 		}
 	}
-	if err := chez.EncryptInto(string(edited), source); err != nil {
+	if err := sealSecret(string(edited), source); err != nil {
 		return err
 	}
 	_ = chez.ApplyNoScripts() // re-render any targets assembled from this secret
 	fmt.Printf("✓ updated secret %s\n", sel)
 	offerSave("casa: edit secret")
 	return nil
+}
+
+// sealSecret re-encrypts an edited secret with the SAME key that sealed it
+// (probed via the registry), so editing never silently rotates a file to the
+// default key. Falls back to chezmoi's encryption when no key matches.
+func sealSecret(plaintext, sourceRel string) error {
+	abs := filepath.Join(chez.SourceDir(), sourceRel)
+	if r, err := keyReg(); err == nil {
+		for _, k := range r.Keys {
+			if !agekey.CanDecrypt(k, abs) {
+				continue
+			}
+			sealed, err := agekey.Encrypt([]byte(plaintext), k.Recipient)
+			if err != nil {
+				return err
+			}
+			return os.WriteFile(abs, sealed, 0o644)
+		}
+	}
+	return chez.EncryptInto(plaintext, sourceRel)
 }
 
 // targetLabels converts source paths to readable ~/ target paths, falling back

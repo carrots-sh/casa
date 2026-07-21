@@ -18,6 +18,8 @@ mkdir -p "$SB/bin" "$SB/home"
 go build -o "$SB/bin/casa" "$ROOT/cmd/casa"
 ln -s "$(command -v chezmoi)" "$SB/bin/chezmoi"
 ln -s "$(command -v git)" "$SB/bin/git"
+ln -s "$(command -v age)" "$SB/bin/age"
+ln -s "$(command -v age-keygen)" "$SB/bin/age-keygen"
 # a non-interactive $EDITOR that appends a marker line and exits
 printf '#!/bin/sh\necho "e2e-appended-line" >> "$1"\n' > "$SB/bin/ed-append"
 chmod +x "$SB/bin/ed-append"
@@ -150,7 +152,7 @@ ls "$CASA_SOURCE" | grep "encrypted_dot_apitoken.key.age" >/dev/null || fail "en
 # ---- 6. secrets: add / list / edit (with re-encrypt) -------------------------
 step "secrets add + list"
 printf 'tok-123\n' > "$HOME/.extra.token"
-casa secrets add "$HOME/.extra.token" | grep "encrypted and now managing" >/dev/null || fail "secrets add"
+casa secrets add "$HOME/.extra.token" | grep "encrypted with main and now managing" >/dev/null || fail "secrets add (adopts ~/key.txt as main)"
 casa secrets list | grep ".apitoken.key" >/dev/null || fail "secrets list"
 
 exp "secrets edit — decrypt, edit, re-encrypt" <<EOF
@@ -159,6 +161,54 @@ must "updated secret"
 EOF
 chezmoi --source "$CASA_SOURCE" cat "$HOME/.apitoken.key" | grep -q "e2e-appended-line" \
   || fail "secret edit did not persist"
+
+# ---- 6b. keys: create second, encrypt with it, delete → orphan re-encrypt ----
+exp "keys — create a second key" <<EOF
+spawn casa secrets keys
+must "generate + register"
+sleep 0.3; send "new"; sleep 0.3; send "\r"
+must "key name"; sleep 0.3; send "vault\r"
+must "created vault"
+must "saved + pushed"
+must "generate + register"
+sleep 0.3; send "\x1b"
+EOF
+grep -q 'vault' "$CASA_SOURCE/.casadata/keys.toml" || fail "vault not registered"
+
+printf 'vault-secret\n' > "$HOME/.vault.token"
+exp "secrets add — pick the non-default key" <<EOF
+spawn casa secrets add $HOME/.vault.token
+must "★ default"
+sleep 0.3; send "vault"; sleep 0.3; send "\r"
+must "encrypted with vault"
+must "saved + pushed"
+EOF
+# main's identity must NOT open it; the registry-driven config must
+age --decrypt --identity "$HOME/key.txt" \
+  "$CASA_SOURCE/encrypted_dot_vault.token.age" >/dev/null 2>&1 \
+  && fail "vault file readable by main (wrong key used)"
+chezmoi --source "$CASA_SOURCE" cat "$HOME/.vault.token" | grep -q vault-secret \
+  || fail "vault-encrypted file not decryptable via config identities"
+
+exp "keys — delete vault, orphan re-encrypted with main" <<EOF
+spawn casa secrets keys
+must "generate + register"
+sleep 0.3; send "vault"; sleep 0.3; send "\r"
+must "make default"
+sleep 0.3; send "delete"; sleep 0.3; send "\r"
+must "only readable by vault"
+sleep 0.8; send "\r"
+must "re-encrypted 1 file"
+must "delete the private key file"
+sleep 0.3; send "y"
+must "deleted key vault"
+must "saved + pushed"
+must "generate + register"
+sleep 0.3; send "\x1b"
+EOF
+grep -q 'vault' "$CASA_SOURCE/.casadata/keys.toml" && fail "vault still registered"
+chezmoi --source "$CASA_SOURCE" cat "$HOME/.vault.token" | grep -q vault-secret \
+  || fail "orphan not readable after re-encrypt with main"
 
 # ---- 7. storage: toggle template on and off ----------------------------------
 exp "storage — plain → template" <<EOF

@@ -19,6 +19,7 @@ var deps = []dep{
 	{"git", "versioning your dotfiles", "xcode-select --install (macOS) / apt install git (Linux)"},
 	{"chezmoi", "the engine behind casa", "casa installs it on first run"},
 	{"brew", "brew/cask/tap packages", "casa installs it during machine setup (or see brew.sh)"},
+	{"age", "secret encryption", "brew install age"},
 	{"go", "go installs", "brew install go"},
 	{"uv", "uv tools", "brew install uv"},
 	{"npm", "npm globals", "brew install node"},

@@ -51,6 +51,7 @@ func Menu() error {
 			{"secrets", []item{
 				{"secret", "edit an encrypted file", "", func() error { return EditSecret("") }},
 				{"encrypt", "add an encrypted file", "", func() error { return AddSecret("") }},
+				{"keys", "manage encryption keys", "", func() error { return Keys() }},
 				{"list secrets", "list encrypted files", "", func() error { return ListSecrets() }},
 			}},
 			{"machine", []item{
