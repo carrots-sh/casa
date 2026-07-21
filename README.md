@@ -1,15 +1,40 @@
 # casa
 
-An easy, **interactive** front-end for [chezmoi](https://chezmoi.io). Manage your
-dotfiles, secrets, and tools from one friendly menu — nothing to memorize.
+[![Release](https://img.shields.io/github/v/release/carrots-sh/casa)](https://github.com/carrots-sh/casa/releases)
+[![License](https://img.shields.io/github/license/carrots-sh/casa)](LICENSE)
 
-casa never reimplements chezmoi; it shells out to it, so your dotfiles repo stays
-the single source of truth and works with or without casa.
+An interactive front-end for [chezmoi](https://chezmoi.io). Your dotfiles,
+tools, and secrets — one friendly menu, nothing to memorize.
 
-## Install
+casa never reimplements chezmoi; it shells out to it, so your dotfiles repo
+stays a plain chezmoi repo you own.
 
-One line on a brand-new machine — installs Homebrew if needed, installs casa, and
-(optionally) sets everything up from your dotfiles:
+## Highlights
+
+- 🏠 **One menu for everything**: edit configs, install tools, manage secrets,
+  sync machines — grouped, filterable, single keypress each.
+- 📦 **One package manifest**: everything you install lands in
+  `.casadata/packages.toml`; every machine converges on it via `chezmoi apply`
+  (brew, casks, taps, `go`, `uv`, `npm`, `bun`, `cargo`, and `curl | sh` installers).
+- 📋 **Paste any install command**: `go install …`, `cargo install …`,
+  `bun add -g …`, `curl … | sh` — casa detects the manager and records it.
+  Install directly in your terminal and casa notices the drift.
+- 🔐 **Encryption with zero key metadata in the repo**: keys are files in
+  `~/.config/casa/keys/`; recipients are derived, never stored. Multiple keys,
+  per-file choice, safe deletion with orphan re-encryption, passphrase-sealed
+  repo backups, doppler support.
+- 🧰 **Repos carry data, casa carries behavior**: the run scripts that install
+  packages and restore keys are generated from the casa you're running —
+  they never live in (or go stale in) your repo.
+- 🖥️ **Fresh machines from nothing**: one command installs chezmoi, Homebrew,
+  your key, and every tool — a passphrase is all you carry.
+- ⌨️ **Consistent controls**: type to filter, `tab` select, `enter` submit,
+  `esc`/`←` back. Paths shown as `~/…` everywhere.
+
+## Installation
+
+One line on a brand-new machine (installs Homebrew if needed, installs casa,
+and sets everything up from your dotfiles):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/carrots-sh/casa/main/install.sh | sh -s -- <your-github-username>
@@ -18,118 +43,136 @@ curl -fsSL https://raw.githubusercontent.com/carrots-sh/casa/main/install.sh | s
 Or just the binary:
 
 ```bash
+# Homebrew
 brew install carrots-sh/tap/casa
+
+# Go
+go install github.com/carrots-sh/casa/cmd/casa@latest
 ```
 
-## Use it
+Release binaries for macOS and Linux (arm64/amd64, plus `.deb`/`.rpm`) are on
+the [releases page](https://github.com/carrots-sh/casa/releases). casa updates
+itself with `casa upgrade`.
 
-Just run:
+## Quickstart
 
 ```bash
 casa
 ```
 
-You get a status-aware menu — it tells you what needs doing (unsaved changes,
-updates available, machine behind your repo) and walks you through everything:
+On a machine with nothing set up, that single command walks you through
+everything: installing chezmoi, cloning your repo (or starting one), your
+setup questions, Homebrew, and key restore. On a working machine it opens the
+menu:
 
 ```
 casa · your-machine
 
-> Configs  · edit your dotfiles
-  Tools    · install, remove, update      (5 updates)
-  Secrets  · encrypted files
-  Sync     · pull latest onto this machine
-  Save     · publish your changes         (2 to save)
-  Status   · full overview
-  Machine  · contexts, info, health
-  Quit
+configs   edit         · pick + edit a config
+          track        · start managing a file
+tools     add          · install a tool
+          update       · upgrade outdated tools   (3 updates)
+          import       · record what's installed here
+secrets   secret       · edit an encrypted file
+          keys         · manage encryption keys
+machine   save         · publish your changes     (2 to save)
+          sync         · update this machine
 ```
 
-Every step is a list or a prompt — pick, confirm, done. Encrypted files are
-handled transparently; nothing destructive happens without a confirmation.
-
-### First five minutes
-
-```bash
-brew install carrots-sh/tap/casa
-casa machine setup <your-github-username>   # or: casa → machine → set up this machine
-casa                                        # from then on: pick what you want
-```
-
-`setup` takes a github **username** (→ `<user>/dotfiles`), a `user/repo`, or a full
-URL. It prefers **SSH**, falls back to **HTTPS**, and errors only if both fail.
-
-casa stores your dotfiles in **`~/.local/share/casa`** by default (override with
-`$CASA_SOURCE`). Existing `~/.local/share/chezmoi` setups keep working unchanged.
-
-## Typed commands (optional — for scripts & muscle memory)
-
-Everything in the menu is also a namespaced command:
+Everything in the menu is also a typed command:
 
 ```
-casa tools    add [mgr] [name] | rm | update | list | import
+casa tools    add [mgr] [name] | add sh | add cmd ["command"] | rm | update | list | import | trust
 casa configs  edit [name] | track [path] | storage [name] | untrack [path] | list
-casa secrets  add [path] | edit | list
+casa secrets  add [path] | edit [name] | keys | list
 casa machine  setup [repo] | sync | save [msg] | status | answers [name] | question | doctor | info
 ```
 
-## Templates & setup questions
+## Features
 
-Tracking a file asks how to store it: **plain**, **template** (differs per
-machine — casa auto-fills your data values into `{{ .var }}` references),
-**encrypted**, or **encrypted template**. Change your mind later with
-`casa configs storage` — it converts in place.
+### Tools
 
-Your repo's setup questionnaire lives in **`.casa.toml.tmpl`** at the repo root
-(chezmoi's `.chezmoi.toml.tmpl` works too — casa reads casa-named special files
-first and mirrors them so plain chezmoi keeps working). `casa machine setup`
-asks its questions in casa's UI, `casa machine answers` changes any answer later
-without re-asking the rest, and `casa machine question` adds a new question —
-answerable with text, yes/no, a number, or (multi-)choice — ready to use as
-`{{ .key }}` in any template.
+Every tool you install through casa is recorded in one hand-editable manifest;
+`chezmoi apply` converges any machine onto it (installs what's missing,
+removes what you deleted). Search across managers, paste a full install
+command, or record a `curl | sh` installer with its own update command:
 
-## Tools: one manifest, no Brewfile
-
-Everything you install through casa is recorded in **`.casadata/packages.toml`**
-— a single hand-editable file that chezmoi loads as template data. On every
-`chezmoi apply`, run scripts render it straight into `brew bundle --file=-`
-(install + cleanup) and run any self-installing tools; no Brewfile ever exists
-on disk, and the repo keeps working without casa.
-
-First `casa tools add` on a repo without a manifest offers to set everything up:
-it creates the manifest + run scripts, then either **imports your existing
-Brewfile** (and retires it) or **scans this machine** (`brew`, `cask`, taps,
-`go`, `uv`, `npm`, `bun`, `cargo`) so migration is one keypress. `casa tools
-import` re-scans any time and records anything you installed directly.
-
-Tools that ship their own installer (`curl … | sh`) are first-class: pick *sh*
-when adding, give it the one-liner and binary name, and every machine installs
-it on apply — with an optional self-update command for `casa tools update`.
-
-## Config (optional)
-
-casa works on any chezmoi repo. To pin specifics, add a committed `.casa.toml`
-at your repo root:
-
-```toml
-[pkg]
-manifest = ".casadata/packages.toml"  # where `casa tools add` records (this is the default)
-
-[setup]
-repo = "your-username"                # default for `casa machine setup`
+```bash
+casa tools add                       # search brew/cask/npm/cargo, or paste a command
+casa tools add cmd "go install golang.org/x/tools/gopls@latest"
+casa tools import                    # record things you installed directly
 ```
 
-Setup questions (work/personal/…) come from your repo's `.casa.toml.tmpl`
-prompts — casa doesn't define them, so it adapts to anyone's setup.
+See [docs/tools.md](docs/tools.md).
 
-## casa names, chezmoi machinery
+### Secrets & keys
 
-Special files in a casa repo carry casa names — `.casa.toml.tmpl`,
-`.casaignore`, `.casadata/` — and casa maintains gitignored symlinks to the
-names chezmoi hardcodes (`.chezmoi.toml.tmpl`, `.chezmoiignore`,
-`.chezmoidata`), recreating them automatically before any chezmoi call. Repos
-that use chezmoi names directly work unchanged. To use a casa repo with bare
-chezmoi (no casa installed), create the three symlinks by hand once per clone.
+Files are encrypted with [age](https://age-encryption.org); private keys live
+in `~/.config/casa/keys/` and nothing about them — names, paths, recipients —
+ever enters a repo. Create keys, pick which one seals each secret, delete keys
+safely (casa finds files only that key can open and re-encrypts them first),
+and carry keys between machines via a passphrase-sealed repo backup, `scp`,
+or doppler.
+
+```bash
+casa secrets add ~/.aws/credentials
+casa secrets keys                    # create · default · backup · delete · doppler
+```
+
+See [docs/secrets.md](docs/secrets.md).
+
+### Configs & templates
+
+Track a file and casa asks how to store it — plain, template (per-machine
+values auto-substituted), encrypted, or both — with sensible defaults
+detected from the file itself. Your repo's setup questions are asked in casa's
+UI and become `{{ .variables }}` usable in any template:
+
+```bash
+casa configs track ~/.gitconfig      # heuristics suggest template (it has your email)
+casa machine question                # add a setup question, use {{ .key }} anywhere
+casa machine answers                 # change an answer, re-render this machine
+```
+
+See [docs/configs.md](docs/configs.md).
+
+### Machines
+
+```bash
+casa machine setup <user>            # provision from <user>/dotfiles
+casa sync                            # upgrade packages, pull, apply
+casa save                            # commit + push (auto-written message)
+casa machine doctor                  # deps table + chezmoi doctor
+```
+
+See [docs/machine.md](docs/machine.md) and
+[docs/getting-started.md](docs/getting-started.md) for the fresh-VPS
+walkthrough.
+
+## Documentation
+
+Full documentation lives in [docs/](docs/):
+[getting started](docs/getting-started.md) ·
+[installation](docs/installation.md) ·
+[tools](docs/tools.md) ·
+[secrets & keys](docs/secrets.md) ·
+[configs](docs/configs.md) ·
+[machine](docs/machine.md) ·
+[repo layout](docs/repo-layout.md) ·
+[CLI reference](docs/reference.md) ·
+[design](docs/design.md)
+
+## Design
+
+- Repos commit **casa-named** special files (`.casa.toml.tmpl`, `.casaignore`,
+  `.casadata/`); casa maintains gitignored symlinks to the names chezmoi
+  expects, self-healing before every chezmoi call.
+- Repos carry **only data**. The run scripts that turn the manifest into
+  installs are generated from the installed casa's templates — behavior
+  always matches your casa version.
+- Your repo remains a working chezmoi repo: files, templates, and encryption
+  are all native chezmoi. See [docs/design.md](docs/design.md) for the
+  trade-offs, honestly stated.
 
 ## Versioning
 
