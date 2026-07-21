@@ -4,6 +4,17 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.3.0
+
+- **Registry-free keys**: a key IS a private identity file in
+  `~/.config/casa/keys/<name>.txt`. No key names, paths, or recipients ever
+  enter a repo — names are filenames, recipients derive from the files
+  (`age-keygen -y`), the default is a local `.default` marker, and the config
+  template's `[age]` block is one generic snippet (glob + derive at init).
+  Replaces 0.2.0's committed `.casadata/keys.toml`; a legacy `~/key.txt`
+  moves into the keys dir as `main` on first use. Trade-off: a machine can
+  only encrypt to keys it holds.
+
 ## 0.2.0
 
 - **Multi-key encryption** (`secrets keys`): create keys, adopt a legacy
