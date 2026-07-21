@@ -2,19 +2,26 @@ package app
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/carrots-sh/casa/internal/chez"
 	"github.com/carrots-sh/casa/internal/ui"
 )
 
-// entry is one leaf action in the flat menu: what you see, what it runs.
-type entry struct {
-	label string
-	run   func() error
+// item is one leaf action in the flat menu: what you see, what it runs.
+type item struct {
+	name, desc, hint string
+	run              func() error
 }
 
-// Menu is casa's interactive home: one flat, filterable list of every action.
+// section is a visual cluster: the name renders once, as a gutter label on the
+// cluster's first row. Still one flat pick — nothing to select twice.
+type section struct {
+	name  string
+	items []item
+}
+
+// Menu is casa's interactive home: one flat, filterable list of every action,
+// visually clustered by what the commands act on.
 func Menu() error {
 	if err := requireChezmoi(); err != nil {
 		return err
@@ -25,73 +32,82 @@ func Menu() error {
 	}
 	for {
 		s := computeStatus()
-		entries := []entry{
-			{row("edit", "pick + edit a config"), func() error { return EditConfig("") }},
-			{row("save", "publish your changes") + hint(s.toSave, "to save"), func() error { return Save("") }},
-			{row("sync", "update this machine") + hint(s.behind, "behind"), func() error { return Sync() }},
-			{row("add", "install a tool"), func() error { return AddTool("", "") }},
-			{row("update", "upgrade outdated tools") + hint(s.updates, "updates"), func() error { return UpdateTools() }},
-			{row("track", "start managing a file"), func() error { return TrackFile("") }},
-			{row("secret", "edit an encrypted file"), func() error { return EditSecret("") }},
-			{row("encrypt", "add an encrypted file"), func() error { return AddSecret("") }},
-			{row("storage", "change how a file is stored"), func() error { return ChangeStorage("") }},
-			{row("status", "full overview"), func() error { return Status() }},
-			{row("remove", "uninstall tools"), func() error { return RemoveTools() }},
-			{row("untrack", "stop managing a file"), func() error { return UntrackFile("") }},
-			{row("list configs", "list managed files"), func() error { return ListConfigs() }},
-			{row("list tools", "list installed tools"), func() error { return ListTools() }},
-			{row("list secrets", "list encrypted files"), func() error { return ListSecrets() }},
-			{row("answers", "change your setup answers"), func() error { return Answers("") }},
-			{row("question", "add a setup question"), func() error { return AddQuestion() }},
-			{row("undo", "revert the last save"), func() error { return Undo() }},
-			{row("setup", "provision from a dotfiles repo"), func() error { return Setup("") }},
-			{row("upgrade", "update casa itself") + upgradeHint(s.upgrade), func() error { return UpgradeSelf() }},
-			{row("doctor", "health check"), func() error { return Doctor() }},
-			{row("info", "machine + repo basics"), func() error { return Info() }},
-		}
-		// urgency bubbling: sync jumps to the front when behind, save above it when unsaved.
-		if s.upgrade != "" {
-			entries = front(entries, row("upgrade", "update casa itself"))
-		}
-		if s.behind > 0 {
-			entries = front(entries, row("sync", "update this machine"))
-		}
-		if s.toSave > 0 {
-			entries = front(entries, row("save", "publish your changes"))
+		sections := []section{
+			{"configs", []item{
+				{"edit", "pick + edit a config", "", func() error { return EditConfig("") }},
+				{"track", "start managing a file", "", func() error { return TrackFile("") }},
+				{"untrack", "stop managing a file", "", func() error { return UntrackFile("") }},
+				{"storage", "change how a file is stored", "", func() error { return ChangeStorage("") }},
+				{"list configs", "list managed files", "", func() error { return ListConfigs() }},
+			}},
+			{"tools", []item{
+				{"add", "install a tool", "", func() error { return AddTool("", "") }},
+				{"update", "upgrade outdated tools", hint(s.updates, "updates"), func() error { return UpdateTools() }},
+				{"remove", "uninstall tools", "", func() error { return RemoveTools() }},
+				{"import", "record what's installed here", "", func() error { return ImportTools() }},
+				{"list tools", "list recorded tools", "", func() error { return ListTools() }},
+			}},
+			{"secrets", []item{
+				{"secret", "edit an encrypted file", "", func() error { return EditSecret("") }},
+				{"encrypt", "add an encrypted file", "", func() error { return AddSecret("") }},
+				{"list secrets", "list encrypted files", "", func() error { return ListSecrets() }},
+			}},
+			{"machine", []item{
+				{"save", "publish your changes", hint(s.toSave, "to save"), func() error { return Save("") }},
+				{"sync", "update this machine", hint(s.behind, "behind"), func() error { return Sync() }},
+				{"status", "full overview", "", func() error { return Status() }},
+				{"answers", "change your setup answers", "", func() error { return Answers("") }},
+				{"question", "add a setup question", "", func() error { return AddQuestion() }},
+				{"undo", "revert the last save", "", func() error { return Undo() }},
+				{"setup", "provision from a dotfiles repo", "", func() error { return Setup("") }},
+				{"doctor", "health check", "", func() error { return Doctor() }},
+				{"info", "machine + repo basics", "", func() error { return Info() }},
+			}},
+			{"casa", []item{
+				{"upgrade", "update casa itself", upgradeHint(s.upgrade), func() error { return UpgradeSelf() }},
+				{"quit", "", "", nil},
+			}},
 		}
 
-		labels := make([]string, 0, len(entries)+1)
-		run := make(map[string]func() error, len(entries))
-		for _, e := range entries {
-			labels = append(labels, e.label)
-			run[e.label] = e.run
+		var labels []string
+		run := map[string]func() error{}
+		byName := map[string]string{}
+		for _, sec := range sections {
+			for i, it := range sec.items {
+				gutter := ""
+				if i == 0 {
+					gutter = sec.name
+				}
+				label := fmt.Sprintf("%-8s  %-12s", gutter, it.name)
+				if it.desc != "" {
+					label += " · " + it.desc
+				}
+				label += it.hint
+				labels = append(labels, label)
+				run[label] = it.run
+				byName[it.name] = label
+			}
 		}
-		labels = append(labels, "quit")
 
-		choice, err := ui.Select("casa · "+s.machine, labels)
-		if err != nil || choice == "" || choice == "quit" {
+		// urgency: the cursor starts on the most pressing action (order intact).
+		def := ""
+		switch {
+		case s.toSave > 0:
+			def = byName["save"]
+		case s.behind > 0:
+			def = byName["sync"]
+		case s.upgrade != "":
+			def = byName["upgrade"]
+		}
+
+		choice, err := ui.SelectDefault("casa · "+s.machine, labels, def)
+		if err != nil || choice == "" || choice == byName["quit"] {
 			return err
 		}
 		if action := run[choice]; action != nil {
 			report(action())
 		}
 	}
-}
-
-// row keeps the aligned 'name · description' aesthetic.
-func row(name, desc string) string {
-	return fmt.Sprintf("%-8s · %s", name, desc)
-}
-
-// front moves the first entry whose label starts with prefix to the top.
-func front(entries []entry, prefix string) []entry {
-	for i, e := range entries {
-		if strings.HasPrefix(e.label, prefix) {
-			entries = append(entries[:i:i], entries[i+1:]...)
-			return append([]entry{e}, entries...)
-		}
-	}
-	return entries
 }
 
 func hint(n int, unit string) string {

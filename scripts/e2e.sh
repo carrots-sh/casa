@@ -115,8 +115,8 @@ grep -q ".chezmoi.toml.tmpl" "$CASA_SOURCE/.gitignore" || fail "mirror not gitig
 
 # ---- 4. configs list (badges) -----------------------------------------------
 step "configs list + badges"
-casa configs list | grep "^.testrc$" >/dev/null || fail "list missing .testrc"
-casa configs list | grep ".gitconfig  (template)" >/dev/null || fail "missing template badge"
+casa configs list | grep "^~/.testrc$" >/dev/null || fail "list missing ~/.testrc"
+casa configs list | grep "~/.gitconfig  (template)" >/dev/null || fail "missing template badge"
 
 # ---- 5. track: plain / template / encrypted defaults ------------------------
 printf 'just plain text\n' > "$HOME/.plainrc"
@@ -179,7 +179,7 @@ EOF
 # ---- 8. edit ------------------------------------------------------------------
 exp "configs edit — exact match, apply, autosave" <<EOF
 spawn casa configs edit .plainrc
-must "edited .plainrc"
+must "edited ~/.plainrc"
 must "saved + pushed"
 EOF
 grep -q "e2e-appended-line" "$HOME/.plainrc" || fail "edit did not apply"
@@ -233,14 +233,16 @@ casa tools list >/dev/null || fail "tools list"
 casa tools update | grep "nothing outdated" >/dev/null || fail "tools update (brew masked)"
 
 # ---- 13. menu opens and quits ---------------------------------------------------
-exp "menu — opens, esc quits" <<EOF
+exp "menu — opens grouped, esc quits" <<EOF
 spawn casa
-must "publish your changes"; hit "\x1b"
+must "configs"; must "pick + edit a config"
+must "tools";   must "install a tool"
+hit "\x1b"
 EOF
 
 # ---- 14. untrack -----------------------------------------------------------------
 step "untrack"
 casa configs untrack "$HOME/.plainrc" | grep "no longer managing" >/dev/null || fail "untrack"
-casa configs list | grep -q "^.plainrc$" && fail "untrack left file managed"
+casa configs list | grep -q "^~/.plainrc$" && fail "untrack left file managed"
 
 printf '\n\033[32m✓ e2e: all actions passed\033[0m\n'

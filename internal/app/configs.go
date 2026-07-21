@@ -23,6 +23,19 @@ func expand(p string) string {
 	return p
 }
 
+// tilde renders a path for display as ~/…: home-relative paths get the prefix,
+// absolute paths under $HOME get shortened, anything else is left alone.
+func tilde(p string) string {
+	h, _ := os.UserHomeDir()
+	if h != "" && strings.HasPrefix(p, h+string(os.PathSeparator)) {
+		return "~" + p[len(h):]
+	}
+	if p == "" || filepath.IsAbs(p) || strings.HasPrefix(p, "~") {
+		return p
+	}
+	return "~/" + p
+}
+
 // pickManaged resolves query against the managed files: exact match wins,
 // a single substring hit opens directly, several hits show a pre-filtered
 // picker (with storage badges), none is an error. Empty query = full picker.
@@ -58,7 +71,7 @@ func pickManaged(title, query string) (string, error) {
 	labels := make([]string, len(filtered))
 	byLabel := make(map[string]string, len(filtered))
 	for i, m := range filtered {
-		labels[i] = m + badges[m]
+		labels[i] = tilde(m) + badges[m]
 		byLabel[labels[i]] = m
 	}
 	sel, err := ui.Select(title, labels)
@@ -77,7 +90,7 @@ func EditConfig(name string) error {
 	if err := chez.Edit(homePath(sel)); err != nil {
 		return err
 	}
-	fmt.Printf("✓ edited %s\n", sel)
+	fmt.Printf("✓ edited %s\n", tilde(sel))
 	offerSave("casa: edit " + sel)
 	return nil
 }
@@ -97,13 +110,18 @@ func TrackFile(path string) error {
 	}
 
 	if cands := unmanagedCommonDotfiles(); len(cands) > 0 {
-		sel, err := ui.MultiSelect("which files should casa manage?", cands)
+		labels := make([]string, len(cands))
+		for i, rel := range cands {
+			labels[i] = tilde(rel)
+		}
+		sel, err := ui.MultiSelect("which files should casa manage?", labels)
 		if err != nil || len(sel) == 0 {
 			return err
 		}
-		for _, rel := range sel {
+		for _, l := range sel {
+			rel := strings.TrimPrefix(l, "~/")
 			if err := trackOne(homePath(rel)); err != nil {
-				fmt.Printf("  (skipped %s: %v)\n", rel, err)
+				fmt.Printf("  (skipped %s: %v)\n", l, err)
 			}
 		}
 		offerSave("casa: track files")
@@ -157,7 +175,7 @@ func trackOne(abs string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("✓ now managing %s (%s)\n", abs, strings.TrimSpace(strings.SplitN(choice, "·", 2)[0]))
+	fmt.Printf("✓ now managing %s (%s)\n", tilde(abs), strings.TrimSpace(strings.SplitN(choice, "·", 2)[0]))
 	return nil
 }
 
@@ -270,7 +288,7 @@ func UntrackFile(path string) error {
 	if err := chez.Forget(path); err != nil {
 		return err
 	}
-	fmt.Printf("✓ no longer managing %s (file kept)\n", path)
+	fmt.Printf("✓ no longer managing %s (file kept)\n", tilde(path))
 	offerSave("casa: untrack")
 	return nil
 }
@@ -283,7 +301,7 @@ func ListConfigs() error {
 	}
 	badges := storageBadges(managed)
 	for _, m := range managed {
-		fmt.Println(m + badges[m])
+		fmt.Println(tilde(m) + badges[m])
 	}
 	return nil
 }
@@ -311,7 +329,7 @@ func ChangeStorage(name string) error {
 			preset = append(preset, a)
 		}
 	}
-	want, err := ui.MultiSelect("how should "+sel+" be stored?", attrOpts, preset...)
+	want, err := ui.MultiSelect("how should "+tilde(sel)+" be stored?", attrOpts, preset...)
 	if err != nil {
 		return err
 	}
@@ -336,12 +354,12 @@ func ChangeStorage(name string) error {
 		return err
 	}
 	if len(want) == 0 {
-		fmt.Printf("✓ %s is now stored plain\n", sel)
+		fmt.Printf("✓ %s is now stored plain\n", tilde(sel))
 	} else {
-		fmt.Printf("✓ %s is now stored: %s\n", sel, strings.Join(want, ", "))
+		fmt.Printf("✓ %s is now stored: %s\n", tilde(sel), strings.Join(want, ", "))
 	}
 	if wantSet["template"] && !cur["template"] {
-		fmt.Printf("  tip: casa edit %s to add {{ … }} per-machine bits\n", sel)
+		fmt.Printf("  tip: casa edit %s to add {{ … }} per-machine bits\n", filepath.Base(sel))
 	}
 	offerSave("casa: change storage of " + filepath.Base(sel))
 	return nil

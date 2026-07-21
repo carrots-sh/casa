@@ -25,7 +25,7 @@ func AddSecret(path string) error {
 	if err := chez.AddEncrypt(expand(path)); err != nil {
 		return err
 	}
-	fmt.Printf("✓ encrypted and now managing %s\n", path)
+	fmt.Printf("✓ encrypted and now managing %s\n", tilde(expand(path)))
 	offerSave("casa: add secret " + filepath.Base(path))
 	return nil
 }
@@ -122,12 +122,15 @@ func EditSecret(name string) error {
 	return nil
 }
 
-// targetLabels converts source paths to readable target paths, falling back to
-// the sources themselves if the conversion fails or is incomplete.
+// targetLabels converts source paths to readable ~/ target paths, falling back
+// to the sources themselves if the conversion fails or is incomplete.
 func targetLabels(sources []string) []string {
 	disp, err := chez.TargetPaths(sources)
 	if err != nil || len(disp) != len(sources) {
 		return sources
+	}
+	for i, d := range disp {
+		disp[i] = tilde(d)
 	}
 	return disp
 }
