@@ -55,7 +55,12 @@ func theme() huh.Theme {
 
 // Select prompts for a single choice from a filterable list.
 func Select(title string, opts []string) (string, error) {
-	var v string
+	return SelectDefault(title, opts, "")
+}
+
+// SelectDefault is Select with the cursor starting on def (when present).
+func SelectDefault(title string, opts []string, def string) (string, error) {
+	v := def
 	err := run(huh.NewForm(huh.NewGroup(
 		huh.NewSelect[string]().
 			Title(title).
@@ -89,7 +94,12 @@ func MultiSelect(title string, opts []string, selected ...string) ([]string, err
 
 // Input prompts for free text.
 func Input(title string) (string, error) {
-	var v string
+	return InputDefault(title, "")
+}
+
+// InputDefault prompts for free text, prefilled with an editable default.
+func InputDefault(title, def string) (string, error) {
+	v := def
 	err := run(huh.NewForm(huh.NewGroup(
 		huh.NewInput().Title(title).Value(&v),
 	)).WithTheme(theme()))
@@ -101,11 +111,16 @@ func Input(title string) (string, error) {
 
 // Confirm prompts yes/no. CASA_YES=1 answers yes without prompting (scripting/tests).
 func Confirm(title string) (bool, error) {
+	return ConfirmDefault(title, false)
+}
+
+// ConfirmDefault is Confirm starting on the given answer.
+func ConfirmDefault(title string, def bool) (bool, error) {
 	if os.Getenv("CASA_YES") == "1" {
 		fmt.Println(title + "  → yes (CASA_YES)")
 		return true, nil
 	}
-	var v bool
+	v := def
 	err := run(huh.NewForm(huh.NewGroup(
 		huh.NewConfirm().Title(title).Value(&v),
 	)).WithTheme(theme()))

@@ -5,8 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/carrots-sh/casa/internal/chez"
@@ -39,20 +37,26 @@ func Setup(arg string) error {
 	}
 	chez.SetSource(target)
 
-	url, err := pickRepoURL(arg)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("setting up this machine from %s\n  into %s ...\n", url, target)
-	// clone ourselves (not chezmoi init <repo>) so the gitignored chezmoi-name
-	// mirrors exist before chezmoi goes looking for its config template.
-	if _, err := os.Stat(filepath.Join(target, ".git")); os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(target, ".git")); err != nil {
+		url, err := pickRepoURL(arg)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("setting up this machine from %s\n  into %s ...\n", url, target)
+		_ = os.MkdirAll(filepath.Dir(target), 0o755)
 		if err := runShell("git", "clone", url, target); err != nil {
 			return err
 		}
+	} else {
+		fmt.Printf("using the repo already at %s\n", target)
 	}
-	chez.EnsureMirrors(target)
-	return chez.InitApply()
+	// ask the repo's setup questions in casa's UI, then render + apply
+	if err := askSetupQuestions(); err != nil {
+		return err
+	}
+	fmt.Println("applying your dotfiles...")
+	invalidateStatus()
+	return chez.Apply()
 }
 
 // pickRepoURL resolves arg to a reachable clone URL, preferring SSH then HTTPS.
@@ -150,7 +154,7 @@ func Save(msg string) error {
 // changedPaths extracts the source-relative paths from `git status --porcelain`.
 func changedPaths(porcelain string) []string {
 	var out []string
-	for _, l := range strings.Split(porcelain, "\n") {
+	for l := range strings.SplitSeq(porcelain, "\n") {
 		if len(l) < 4 {
 			continue
 		}
@@ -201,82 +205,14 @@ func Status() error {
 	return nil
 }
 
-// Context lets you toggle this machine's contexts (the on/off setup answers)
-// from a checklist, then re-applies. Falls back to re-asking the prompts if it
-// can't read or write the values directly.
-func Context() error {
-	if err := requireChezmoi(); err != nil {
+// rerunPrompts is the fallback when the questionnaire can't be parsed:
+// chezmoi asks its own prompts on the terminal, then casa applies.
+func rerunPrompts() error {
+	if err := chez.Init("--prompt"); err != nil {
 		return err
 	}
-	data, err := chez.Data()
-	if err != nil {
-		return rerunPrompts()
-	}
-	var keys, current []string
-	for k, v := range data {
-		if b, ok := v.(bool); ok {
-			keys = append(keys, k)
-			if b {
-				current = append(current, k)
-			}
-		}
-	}
-	if len(keys) == 0 {
-		return rerunPrompts()
-	}
-	sort.Strings(keys)
-	sel, err := ui.MultiSelect("which contexts are on for this machine?", keys, current...)
-	if err != nil {
-		return err
-	}
-	want := map[string]bool{}
-	for _, k := range sel {
-		want[k] = true
-	}
-	if err := setContextData(keys, want); err != nil {
-		fmt.Println("couldn't update the config directly; re-asking the setup questions instead...")
-		return rerunPrompts()
-	}
-	fmt.Println("applying...")
 	invalidateStatus()
 	return chez.Apply()
-}
-
-func rerunPrompts() error {
-	c := exec.Command("chezmoi", "init", "--prompt")
-	c.Stdin, c.Stdout, c.Stderr = os.Stdin, os.Stdout, os.Stderr
-	if err := c.Run(); err != nil {
-		return err
-	}
-	return chez.Apply()
-}
-
-// setContextData rewrites the bool context keys in ~/.config/chezmoi/chezmoi.toml.
-func setContextData(keys []string, want map[string]bool) error {
-	home, _ := os.UserHomeDir()
-	cfg := filepath.Join(home, ".config", "chezmoi", "chezmoi.toml")
-	data, err := os.ReadFile(cfg)
-	if err != nil {
-		return err
-	}
-	_ = os.WriteFile(cfg+".casa.bak", data, 0o644) // safety backup
-	lines := strings.Split(string(data), "\n")
-	set := map[string]bool{}
-	for i, l := range lines {
-		for _, k := range keys {
-			re := regexp.MustCompile(`^(\s*` + regexp.QuoteMeta(k) + `\s*=\s*)(true|false)\s*$`)
-			if m := re.FindStringSubmatch(l); m != nil {
-				lines[i] = fmt.Sprintf("%s%t", m[1], want[k])
-				set[k] = true
-			}
-		}
-	}
-	for _, k := range keys {
-		if !set[k] {
-			return fmt.Errorf("context %q is not a simple value in the config", k)
-		}
-	}
-	return os.WriteFile(cfg, []byte(strings.Join(lines, "\n")), 0o644)
 }
 
 // Undo reverts the last saved change and re-applies.

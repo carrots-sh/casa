@@ -34,19 +34,25 @@ func Menu() error {
 			{row("track", "start managing a file"), func() error { return TrackFile("") }},
 			{row("secret", "edit an encrypted file"), func() error { return EditSecret("") }},
 			{row("encrypt", "add an encrypted file"), func() error { return AddSecret("") }},
+			{row("storage", "change how a file is stored"), func() error { return ChangeStorage("") }},
 			{row("status", "full overview"), func() error { return Status() }},
 			{row("remove", "uninstall tools"), func() error { return RemoveTools() }},
 			{row("untrack", "stop managing a file"), func() error { return UntrackFile("") }},
 			{row("list configs", "list managed files"), func() error { return ListConfigs() }},
 			{row("list tools", "list installed tools"), func() error { return ListTools() }},
 			{row("list secrets", "list encrypted files"), func() error { return ListSecrets() }},
-			{row("contexts", "toggle machine contexts"), func() error { return Context() }},
+			{row("answers", "change your setup answers"), func() error { return Answers("") }},
+			{row("question", "add a setup question"), func() error { return AddQuestion() }},
 			{row("undo", "revert the last save"), func() error { return Undo() }},
 			{row("setup", "provision from a dotfiles repo"), func() error { return Setup("") }},
+			{row("upgrade", "update casa itself") + upgradeHint(s.upgrade), func() error { return UpgradeSelf() }},
 			{row("doctor", "health check"), func() error { return Doctor() }},
 			{row("info", "machine + repo basics"), func() error { return Info() }},
 		}
 		// urgency bubbling: sync jumps to the front when behind, save above it when unsaved.
+		if s.upgrade != "" {
+			entries = front(entries, row("upgrade", "update casa itself"))
+		}
 		if s.behind > 0 {
 			entries = front(entries, row("sync", "update this machine"))
 		}
@@ -93,6 +99,13 @@ func hint(n int, unit string) string {
 		return ""
 	}
 	return fmt.Sprintf("   (%d %s)", n, unit)
+}
+
+func upgradeHint(tag string) string {
+	if tag == "" {
+		return ""
+	}
+	return "   (" + tag + " is out)"
 }
 
 func report(err error) {

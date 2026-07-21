@@ -22,7 +22,6 @@ func resolve() string {
 	if srcCached != "" {
 		return srcCached
 	}
-	defer func() { EnsureMirrors(srcCached) }() // self-heal before first chezmoi call
 	if v := strings.TrimSpace(os.Getenv("CASA_SOURCE")); v != "" {
 		srcCached = v
 		return srcCached
@@ -49,28 +48,40 @@ func resolve() string {
 // hardcodes. casa repos commit only the casa names; the chezmoi names are
 // gitignored symlinks recreated here on demand. Repos that use chezmoi names
 // directly are left untouched (the casa file simply doesn't exist).
+// .casadata is a directory — chezmoi follows the symlink for template data.
 var mirrors = [][2]string{
 	{".casa.toml.tmpl", ".chezmoi.toml.tmpl"},
+	{".casa.yaml.tmpl", ".chezmoi.yaml.tmpl"},
+	{".casa.json.tmpl", ".chezmoi.json.tmpl"},
 	{".casaignore", ".chezmoiignore"},
+	{".casaremove", ".chezmoiremove"},
+	{".casaversion", ".chezmoiversion"},
+	{".casaexternal.toml", ".chezmoiexternal.toml"},
 	{".casadata", ".chezmoidata"},
+	{".casadata.toml", ".chezmoidata.toml"},
+	{".casadata.yaml", ".chezmoidata.yaml"},
+	{".casadata.json", ".chezmoidata.json"},
 }
 
 // EnsureMirrors creates any missing chezmoi-named symlinks for casa-named
-// special files in dir, and keeps them gitignored. Safe to call repeatedly.
+// special files in dir, gitignoring the links it creates. Safe to call
+// repeatedly; a user's own real chezmoi-named file is never touched.
 func EnsureMirrors(dir string) {
-	var ignore []string
+	var created []string
 	for _, m := range mirrors {
 		casa, chz := m[0], m[1]
-		if _, err := os.Stat(filepath.Join(dir, casa)); err != nil {
+		if _, err := os.Lstat(filepath.Join(dir, casa)); err != nil {
 			continue
 		}
 		link := filepath.Join(dir, chz)
-		if _, err := os.Lstat(link); os.IsNotExist(err) {
-			_ = os.Symlink(casa, link)
+		if _, err := os.Lstat(link); err == nil {
+			continue // already linked, or the user's own real file
 		}
-		ignore = append(ignore, chz)
+		if os.Symlink(casa, link) == nil {
+			created = append(created, chz)
+		}
 	}
-	ensureGitignored(dir, ignore)
+	ensureGitignored(dir, created)
 }
 
 // ensureGitignored appends any missing names to dir's .gitignore.
@@ -111,7 +122,9 @@ func SetSource(dir string) { srcCached = dir }
 // is used (not CHEZMOI_SOURCE_DIR) because some subcommands (e.g. managed)
 // ignore the env var.
 func cmd(args ...string) *exec.Cmd {
-	return exec.Command("chezmoi", append([]string{"--source", resolve()}, args...)...)
+	src := resolve()
+	EnsureMirrors(src) // self-heal before every chezmoi call (cheap: a few Lstats)
+	return exec.Command("chezmoi", append([]string{"--source", src}, args...)...)
 }
 
 func run(args ...string) error {
@@ -182,10 +195,16 @@ func ApplyNoScripts(paths ...string) error {
 // Update pulls the repo and applies (catch this machine up).
 func Update() error { return run("update") }
 
-// InitApply runs init --apply against the already-cloned source dir (prompts
-// from the config template, then applies). The clone happens first so casa can
-// recreate the gitignored chezmoi-name mirrors before chezmoi looks for them.
-func InitApply() error { return run("init", "--apply") }
+// ExecuteTemplate renders a template string (as apply would), returning any
+// template error. Used to validate edited templates before saving them.
+func ExecuteTemplate(tmpl string) error {
+	c := cmd("execute-template")
+	c.Stdin = strings.NewReader(tmpl)
+	if o, err := c.CombinedOutput(); err != nil {
+		return fmt.Errorf("%s", strings.TrimSpace(string(o)))
+	}
+	return nil
+}
 
 // Edit opens a managed file in the configured editor and applies on close.
 func Edit(homePath string) error { return run("edit", "--apply", homePath) }
@@ -195,6 +214,53 @@ func Add(homePath string) error { return run("add", homePath) }
 
 // AddEncrypt starts managing a file, encrypted.
 func AddEncrypt(homePath string) error { return run("add", "--encrypt", homePath) }
+
+// AddTemplate starts managing a file as a template, auto-substituting known
+// data values (email, hostname, …) with {{ .var }} references.
+func AddTemplate(homePath string) error { return run("add", "--autotemplate", homePath) }
+
+// AddEncryptedTemplate starts managing a file as an encrypted template.
+func AddEncryptedTemplate(homePath string) error {
+	return run("add", "--encrypt", "--template", homePath)
+}
+
+// Chattr changes a target's storage attributes (e.g. "+template,-encrypted")
+// by renaming/re-encoding its source. The "--" keeps a leading -attr from
+// being parsed as a flag.
+func Chattr(mods, homePath string) error { return run("chattr", "--", mods, homePath) }
+
+// Init re-renders the machine config from the source questionnaire (and clones
+// first when a repo is given). Prompts read the terminal unless answered via
+// --promptString/Bool/Int/Choice/Multichoice flags.
+func Init(args ...string) error { return run(append([]string{"init"}, args...)...) }
+
+// ConfigTemplate returns the setup questionnaire's path, casa-named first.
+// Symlinks are skipped so a mirrored link never shadows the real file.
+func ConfigTemplate() (string, bool) {
+	for _, n := range []string{
+		".casa.toml.tmpl", ".casa.yaml.tmpl", ".casa.json.tmpl",
+		".chezmoi.toml.tmpl", ".chezmoi.yaml.tmpl", ".chezmoi.json.tmpl",
+	} {
+		p := filepath.Join(SourceDir(), n)
+		if fi, err := os.Lstat(p); err == nil && fi.Mode()&os.ModeSymlink == 0 {
+			return p, true
+		}
+	}
+	return "", false
+}
+
+// SourcePaths converts target paths (absolute) to their source paths,
+// one per input, in order.
+func SourcePaths(homePaths []string) ([]string, error) {
+	if len(homePaths) == 0 {
+		return nil, nil
+	}
+	o, err := out(append([]string{"source-path"}, homePaths...)...)
+	if err != nil {
+		return nil, err
+	}
+	return NonEmpty(o), nil
+}
 
 // Forget stops managing a target (leaves the file in place).
 func Forget(homePath string) error { return run("forget", "--force", homePath) }
@@ -262,7 +328,7 @@ func TargetPaths(sourceRels []string) ([]string, error) {
 	}
 	home, _ := os.UserHomeDir()
 	var rels []string
-	for _, l := range strings.Split(strings.TrimRight(o, "\n"), "\n") {
+	for l := range strings.SplitSeq(strings.TrimRight(o, "\n"), "\n") {
 		l = strings.TrimSpace(l)
 		if l == "" {
 			continue
@@ -290,7 +356,7 @@ func EncryptInto(plaintext, sourceRelPath string) error {
 // NonEmpty splits s into its non-blank lines.
 func NonEmpty(s string) []string {
 	var out []string
-	for _, l := range strings.Split(s, "\n") {
+	for l := range strings.SplitSeq(s, "\n") {
 		if l = strings.TrimRight(l, "\r"); strings.TrimSpace(l) != "" {
 			out = append(out, l)
 		}

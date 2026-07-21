@@ -8,13 +8,15 @@ import (
 
 	"github.com/carrots-sh/casa/internal/chez"
 	"github.com/carrots-sh/casa/internal/pm"
+	"github.com/carrots-sh/casa/internal/selfupdate"
 )
 
 type statusInfo struct {
 	machine string
-	toSave  int // uncommitted changes in the repo
-	behind  int // commits behind the remote
-	updates int // outdated packages (-1 = not computed yet)
+	toSave  int    // uncommitted changes in the repo
+	behind  int    // commits behind the remote
+	updates int    // outdated packages (-1 = not computed yet)
+	upgrade string // newer casa release tag, "" if current (or unknown yet)
 }
 
 var (
@@ -22,6 +24,9 @@ var (
 	cheapCache *statusInfo // git-derived hints (fast); nil = stale
 	updCache   = -1        // brew/npm outdated count; -1 = unknown
 	updBusy    bool        // a background outdated check is running
+	selfTag    string      // newer casa release, filled by a background check
+	selfBusy   bool
+	selfDone   bool
 )
 
 // invalidateStatus clears the cached hints after an action changes state.
@@ -46,13 +51,27 @@ func computeStatus() statusInfo {
 			stMu.Unlock()
 		}()
 	}
+	if !selfDone && !selfBusy {
+		selfBusy = true
+		go func() {
+			// throttled to one network hit per day; dev builds never flag
+			var tag string
+			if t := selfupdate.LatestThrottled(); selfupdate.Newer(Version, t) {
+				tag = t
+			}
+			stMu.Lock()
+			selfTag, selfBusy, selfDone = tag, false, true
+			stMu.Unlock()
+		}()
+	}
+	self := selfTag
 	upd := updCache
 	cached := cheapCache
 	stMu.Unlock()
 
 	if cached != nil {
 		s := *cached
-		s.updates = upd
+		s.updates, s.upgrade = upd, self
 		return s
 	}
 
@@ -69,7 +88,7 @@ func computeStatus() statusInfo {
 	cheapCache = &cp
 	stMu.Unlock()
 
-	s.updates = upd
+	s.updates, s.upgrade = upd, self
 	return s
 }
 

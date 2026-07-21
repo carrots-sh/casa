@@ -25,7 +25,7 @@ func expand(p string) string {
 
 // pickManaged resolves query against the managed files: exact match wins,
 // a single substring hit opens directly, several hits show a pre-filtered
-// picker, none is an error. Empty query = full picker.
+// picker (with storage badges), none is an error. Empty query = full picker.
 func pickManaged(title, query string) (string, error) {
 	managed, err := chez.Managed()
 	if err != nil {
@@ -35,26 +35,34 @@ func pickManaged(title, query string) (string, error) {
 		fmt.Println("no configs yet — start with: casa configs track <path>")
 		return "", nil
 	}
-	if query == "" {
-		return ui.Select(title, managed)
-	}
 	var filtered []string
-	for _, m := range managed {
-		if m == query {
-			return m, nil
+	if query == "" {
+		filtered = managed
+	} else {
+		for _, m := range managed {
+			if m == query {
+				return m, nil
+			}
+			if strings.Contains(strings.ToLower(m), strings.ToLower(query)) {
+				filtered = append(filtered, m)
+			}
 		}
-		if strings.Contains(strings.ToLower(m), strings.ToLower(query)) {
-			filtered = append(filtered, m)
+		switch len(filtered) {
+		case 1:
+			return filtered[0], nil
+		case 0:
+			return "", fmt.Errorf("nothing managed matches %q", query)
 		}
 	}
-	switch len(filtered) {
-	case 1:
-		return filtered[0], nil
-	case 0:
-		return "", fmt.Errorf("nothing managed matches %q", query)
-	default:
-		return ui.Select(title, filtered)
+	badges := storageBadges(filtered)
+	labels := make([]string, len(filtered))
+	byLabel := make(map[string]string, len(filtered))
+	for i, m := range filtered {
+		labels[i] = m + badges[m]
+		byLabel[labels[i]] = m
 	}
+	sel, err := ui.Select(title, labels)
+	return byLabel[sel], err
 }
 
 // EditConfig fuzzy-picks a managed file and edits it (encrypted ones transparently).
@@ -113,22 +121,91 @@ func TrackFile(path string) error {
 	return nil
 }
 
-// trackOne manages a single file, offering to encrypt it if it looks sensitive.
+// storage options offered when tracking a file. Order matters: plain first.
+const (
+	storePlain    = "plain              · same on every machine"
+	storeTemplate = "template           · differs per machine (auto-fills your data)"
+	storeSecret   = "encrypted          · secret, sealed in the repo"
+	storeBoth     = "encrypted template · secret and per-machine"
+)
+
+// trackOne manages a single file, asking how it should be stored. The default
+// follows two heuristics: sensitive-looking names suggest encryption, content
+// containing this machine's data values (email, hostname, …) suggests a template.
 func trackOne(abs string) error {
+	def := storePlain
 	if looksSensitive(abs) {
-		if ok, _ := ui.Confirm(filepath.Base(abs) + " looks sensitive — encrypt it?"); ok {
-			if err := chez.AddEncrypt(abs); err != nil {
-				return err
-			}
-			fmt.Printf("✓ now managing %s (encrypted)\n", abs)
-			return nil
-		}
+		def = storeSecret
+	} else if hasDataValues(abs) {
+		def = storeTemplate
 	}
-	if err := chez.Add(abs); err != nil {
+	choice, err := ui.SelectDefault("how should casa store "+filepath.Base(abs)+"?",
+		[]string{storePlain, storeTemplate, storeSecret, storeBoth}, def)
+	if err != nil || choice == "" {
 		return err
 	}
-	fmt.Printf("✓ now managing %s\n", abs)
+	switch choice {
+	case storeTemplate:
+		err = chez.AddTemplate(abs)
+	case storeSecret:
+		err = chez.AddEncrypt(abs)
+	case storeBoth:
+		err = chez.AddEncryptedTemplate(abs)
+	default:
+		err = chez.Add(abs)
+	}
+	if err != nil {
+		return err
+	}
+	fmt.Printf("✓ now managing %s (%s)\n", abs, strings.TrimSpace(strings.SplitN(choice, "·", 2)[0]))
 	return nil
+}
+
+var dataStringsCached []string
+
+// dataStrings collects this machine's string data values (once per run) —
+// the things a template would substitute.
+func dataStrings() []string {
+	if dataStringsCached != nil {
+		return dataStringsCached
+	}
+	dataStringsCached = []string{} // non-nil: compute once even on error
+	data, err := chez.Data()
+	if err != nil {
+		return dataStringsCached
+	}
+	for k, v := range data {
+		if k == "chezmoi" {
+			continue
+		}
+		if s, ok := v.(string); ok && len(s) >= 4 {
+			dataStringsCached = append(dataStringsCached, s)
+		}
+	}
+	if cm, ok := data["chezmoi"].(map[string]any); ok {
+		for _, k := range []string{"hostname", "username"} {
+			if s, ok := cm[k].(string); ok && len(s) >= 4 {
+				dataStringsCached = append(dataStringsCached, s)
+			}
+		}
+	}
+	return dataStringsCached
+}
+
+// hasDataValues reports whether the file's content mentions any of this
+// machine's data values — a good template candidate.
+func hasDataValues(abs string) bool {
+	b, err := os.ReadFile(abs)
+	if err != nil {
+		return false
+	}
+	s := string(b)
+	for _, v := range dataStrings() {
+		if strings.Contains(s, v) {
+			return true
+		}
+	}
+	return false
 }
 
 func looksSensitive(path string) bool {
@@ -198,14 +275,121 @@ func UntrackFile(path string) error {
 	return nil
 }
 
-// ListConfigs prints all managed files.
+// ListConfigs prints all managed files with their storage badges.
 func ListConfigs() error {
 	managed, err := chez.Managed()
 	if err != nil {
 		return err
 	}
+	badges := storageBadges(managed)
 	for _, m := range managed {
-		fmt.Println(m)
+		fmt.Println(m + badges[m])
 	}
 	return nil
+}
+
+// attrOpts are the storage attributes casa lets you toggle after tracking.
+var attrOpts = []string{"template", "encrypted", "private", "executable"}
+
+// ChangeStorage toggles how a managed file is stored (template, encrypted, …)
+// by renaming/re-encoding its source via chezmoi chattr.
+func ChangeStorage(name string) error {
+	if err := requireChezmoi(); err != nil {
+		return err
+	}
+	sel, err := pickManaged("change storage of which file?", name)
+	if err != nil || sel == "" {
+		return err
+	}
+	cur, err := sourceAttrs(sel)
+	if err != nil {
+		return err
+	}
+	var preset []string
+	for _, a := range attrOpts {
+		if cur[a] {
+			preset = append(preset, a)
+		}
+	}
+	want, err := ui.MultiSelect("how should "+sel+" be stored?", attrOpts, preset...)
+	if err != nil {
+		return err
+	}
+	wantSet := map[string]bool{}
+	for _, a := range want {
+		wantSet[a] = true
+	}
+	var mods []string
+	for _, a := range attrOpts {
+		switch {
+		case wantSet[a] && !cur[a]:
+			mods = append(mods, "+"+a)
+		case !wantSet[a] && cur[a]:
+			mods = append(mods, "-"+a)
+		}
+	}
+	if len(mods) == 0 {
+		fmt.Println("nothing to change.")
+		return nil
+	}
+	if err := chez.Chattr(strings.Join(mods, ","), homePath(sel)); err != nil {
+		return err
+	}
+	if len(want) == 0 {
+		fmt.Printf("✓ %s is now stored plain\n", sel)
+	} else {
+		fmt.Printf("✓ %s is now stored: %s\n", sel, strings.Join(want, ", "))
+	}
+	if wantSet["template"] && !cur["template"] {
+		fmt.Printf("  tip: casa edit %s to add {{ … }} per-machine bits\n", sel)
+	}
+	offerSave("casa: change storage of " + filepath.Base(sel))
+	return nil
+}
+
+// sourceAttrs reads a managed target's storage attributes from its source filename.
+func sourceAttrs(target string) (map[string]bool, error) {
+	srcs, err := chez.SourcePaths([]string{homePath(target)})
+	if err != nil || len(srcs) != 1 {
+		return nil, fmt.Errorf("couldn't find the source of %s", target)
+	}
+	return attrsFromSourceName(filepath.Base(srcs[0])), nil
+}
+
+// attrsFromSourceName decodes chezmoi's filename attributes we care about.
+func attrsFromSourceName(base string) map[string]bool {
+	name := strings.TrimSuffix(strings.TrimSuffix(base, ".age"), ".asc")
+	return map[string]bool{
+		"template":   strings.HasSuffix(name, ".tmpl"),
+		"encrypted":  strings.Contains(base, "encrypted_"),
+		"private":    strings.Contains(base, "private_"),
+		"executable": strings.Contains(base, "executable_"),
+	}
+}
+
+// storageBadges maps each target to a "  (template, encrypted)" suffix, empty
+// for plain files. Best-effort: on any error every badge is just "".
+func storageBadges(targets []string) map[string]string {
+	out := map[string]string{}
+	homes := make([]string, len(targets))
+	for i, t := range targets {
+		homes[i] = homePath(t)
+	}
+	srcs, err := chez.SourcePaths(homes)
+	if err != nil || len(srcs) != len(targets) {
+		return out
+	}
+	for i, t := range targets {
+		a := attrsFromSourceName(filepath.Base(srcs[i]))
+		var tags []string
+		for _, k := range []string{"template", "encrypted"} {
+			if a[k] {
+				tags = append(tags, k)
+			}
+		}
+		if len(tags) > 0 {
+			out[t] = "  (" + strings.Join(tags, ", ") + ")"
+		}
+	}
+	return out
 }

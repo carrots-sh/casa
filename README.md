@@ -68,10 +68,25 @@ Everything in the menu is also a namespaced command:
 
 ```
 casa tools    add [mgr] [name] | rm | update | list | import
-casa configs  edit [name] | track [path] | untrack [path] | list
+casa configs  edit [name] | track [path] | storage [name] | untrack [path] | list
 casa secrets  add [path] | edit | list
-casa machine  setup [repo] | sync | save [msg] | status | context | doctor | info
+casa machine  setup [repo] | sync | save [msg] | status | answers [name] | question | doctor | info
 ```
+
+## Templates & setup questions
+
+Tracking a file asks how to store it: **plain**, **template** (differs per
+machine — casa auto-fills your data values into `{{ .var }}` references),
+**encrypted**, or **encrypted template**. Change your mind later with
+`casa configs storage` — it converts in place.
+
+Your repo's setup questionnaire lives in **`.casa.toml.tmpl`** at the repo root
+(chezmoi's `.chezmoi.toml.tmpl` works too — casa reads casa-named special files
+first and mirrors them so plain chezmoi keeps working). `casa machine setup`
+asks its questions in casa's UI, `casa machine answers` changes any answer later
+without re-asking the rest, and `casa machine question` adds a new question —
+answerable with text, yes/no, a number, or (multi-)choice — ready to use as
+`{{ .key }}` in any template.
 
 ## Tools: one manifest, no Brewfile
 
@@ -104,8 +119,8 @@ manifest = ".casadata/packages.toml"  # where `casa tools add` records (this is 
 repo = "your-username"                # default for `casa machine setup`
 ```
 
-Contexts (work/personal/…) come from your repo's config template prompts —
-casa doesn't define them, so it adapts to anyone's setup.
+Setup questions (work/personal/…) come from your repo's `.casa.toml.tmpl`
+prompts — casa doesn't define them, so it adapts to anyone's setup.
 
 ## casa names, chezmoi machinery
 

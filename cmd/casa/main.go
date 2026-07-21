@@ -22,9 +22,11 @@ const usage = `casa — easy chezmoi: manage your configs and tools from one fri
 
 usage: casa [command]           (no command opens the interactive menu)
 shortcuts: casa edit [name] · casa save [msg] · casa sync · casa status
+           casa upgrade         update casa itself to the latest release
 
 configs   edit [name]           pick and edit a config (encrypted ones handled transparently)
-          track [path]          start managing an existing file
+          track [path]          start managing an existing file (plain, template, or encrypted)
+          storage [name]        change how a file is stored (template/encrypted/…)
           untrack [path]        stop managing a file (keeps it on disk)
           list                  list managed files
 tools     add [manager] [name]  install a tool and record it in your manifest
@@ -40,7 +42,8 @@ machine   setup [repo]          provision this machine from your dotfiles repo
           sync                  upgrade packages, then pull + apply dotfiles
           save [message]        commit + push your changes
           status                show what's changed, behind, or outdated
-          context               toggle this machine's contexts and re-apply
+          answers [name]        change this machine's setup answers and re-apply
+          question              add a setup question to your repo
           undo                  revert the last saved change and re-apply
           doctor                health check
           info                  machine + repo basics
@@ -50,6 +53,7 @@ help, version                   this text / version info
 
 func main() {
 	fillFromBuildInfo()
+	app.Version = version
 	if err := dispatch(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "✗", err)
 		os.Exit(1)
@@ -82,6 +86,8 @@ func dispatch(args []string) error {
 		return app.Sync()
 	case "status":
 		return app.Status()
+	case "upgrade":
+		return app.UpgradeSelf()
 	case "configs":
 		switch arg(args, 1) {
 		case "edit":
@@ -90,6 +96,8 @@ func dispatch(args []string) error {
 			return app.TrackFile(arg(args, 2))
 		case "untrack":
 			return app.UntrackFile(arg(args, 2))
+		case "storage":
+			return app.ChangeStorage(arg(args, 2))
 		case "list":
 			return app.ListConfigs()
 		}
@@ -125,8 +133,10 @@ func dispatch(args []string) error {
 			return app.Save(arg(args, 2))
 		case "status":
 			return app.Status()
-		case "context":
-			return app.Context()
+		case "answers", "context": // context: the old name for the same screen
+			return app.Answers(arg(args, 2))
+		case "question":
+			return app.AddQuestion()
 		case "undo":
 			return app.Undo()
 		case "doctor":
