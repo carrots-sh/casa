@@ -235,17 +235,17 @@ func applyUpdate(f []string, shUpdates map[string]string) {
 	}
 }
 
-// ListTools prints everything recorded, grouped by section.
-func ListTools() error {
+// toolLines renders everything recorded, grouped by section.
+func toolLines() ([]string, error) {
 	m := mf()
 	if !m.Configured() {
-		fmt.Println("no manifest yet — try: casa tools add   (or: casa tools import)")
-		return nil
+		return nil, fmt.Errorf("no manifest yet — try: casa tools add   (or: casa tools import)")
 	}
+	var lines []string
 	for _, section := range manifest.Sections {
 		names, _ := m.List(section)
 		for _, n := range names {
-			fmt.Printf("%-11s %s\n", section, n)
+			lines = append(lines, fmt.Sprintf("%-11s %s", section, n))
 		}
 	}
 	tools, _ := m.ShTools()
@@ -254,7 +254,20 @@ func ListTools() error {
 		if _, err := exec.LookPath(t.Bin); err != nil {
 			marker = "   (not installed here)"
 		}
-		fmt.Printf("%-11s %s%s\n", "sh", t.Bin, marker)
+		lines = append(lines, fmt.Sprintf("%-11s %s%s", "sh", t.Bin, marker))
+	}
+	return lines, nil
+}
+
+// ListTools prints everything recorded (plain output — pipeable).
+func ListTools() error {
+	lines, err := toolLines()
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	for _, l := range lines {
+		fmt.Println(l)
 	}
 	return nil
 }

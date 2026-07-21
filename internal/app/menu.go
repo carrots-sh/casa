@@ -11,9 +11,25 @@ import (
 )
 
 // item is one leaf action in the flat menu: what you see, what it runs.
+// paged actions present their output inside the TUI (scroll + filter) and
+// return to the menu on their own — no "enter to go back" pause.
 type item struct {
 	name, desc, hint string
 	run              func() error
+	paged            bool
+}
+
+// page shows lines inside a scrollable, filterable list — the same widget as
+// every picker, so the controls match; enter or esc returns to the menu.
+func page(title string, lines []string, err error) error {
+	if err != nil {
+		return err
+	}
+	if len(lines) == 0 {
+		lines = []string{"(nothing yet)"}
+	}
+	_, perr := ui.Select(title, lines)
+	return perr
 }
 
 // section is a visual cluster: the name renders once, as a gutter label on the
@@ -37,45 +53,55 @@ func Menu() error {
 		s := computeStatus()
 		sections := []section{
 			{"configs", []item{
-				{"edit", "pick + edit a config", "", func() error { return EditConfig("") }},
-				{"track", "start managing a file", "", func() error { return TrackFile("") }},
-				{"untrack", "stop managing a file", "", func() error { return UntrackFile("") }},
-				{"storage", "change how a file is stored", "", func() error { return ChangeStorage("") }},
-				{"list configs", "list managed files", "", func() error { return ListConfigs() }},
+				{"edit", "pick + edit a config", "", func() error { return EditConfig("") }, false},
+				{"track", "start managing a file", "", func() error { return TrackFile("") }, false},
+				{"untrack", "stop managing a file", "", func() error { return UntrackFile("") }, false},
+				{"storage", "change how a file is stored", "", func() error { return ChangeStorage("") }, false},
+				{"list", "list managed files", "", func() error {
+					l, err := configLines()
+					return page("managed files", l, err)
+				}, true},
 			}},
 			{"tools", []item{
-				{"add", "install a tool", "", func() error { return AddTool("", "") }},
-				{"update", "upgrade outdated tools", hint(s.updates, "updates"), func() error { return UpdateTools() }},
-				{"remove", "uninstall tools", "", func() error { return RemoveTools() }},
-				{"import", "record what's installed here", hint(s.unrecorded, "to record"), func() error { return ImportTools() }},
-				{"trust", "pick which taps are trusted", "", func() error { return TrustTaps() }},
-				{"list tools", "list recorded tools", "", func() error { return ListTools() }},
+				{"add", "install a tool", "", func() error { return AddTool("", "") }, false},
+				{"update", "upgrade outdated tools", hint(s.updates, "updates"), func() error { return UpdateTools() }, false},
+				{"remove", "uninstall tools", "", func() error { return RemoveTools() }, false},
+				{"import", "record what's installed here", hint(s.unrecorded, "to record"), func() error { return ImportTools() }, false},
+				{"trust", "pick which taps are trusted", "", func() error { return TrustTaps() }, false},
+				{"list", "list recorded tools", "", func() error {
+					l, err := toolLines()
+					return page("recorded tools", l, err)
+				}, true},
 			}},
 			{"secrets", []item{
-				{"secret", "edit an encrypted file", "", func() error { return EditSecret("") }},
-				{"encrypt", "add an encrypted file", "", func() error { return AddSecret("") }},
-				{"keys", "manage encryption keys", "", func() error { return Keys() }},
-				{"list secrets", "list encrypted files", "", func() error { return ListSecrets() }},
+				{"secret", "edit an encrypted file", "", func() error { return EditSecret("") }, false},
+				{"encrypt", "add an encrypted file", "", func() error { return AddSecret("") }, false},
+				{"keys", "manage encryption keys", "", func() error { return Keys() }, false},
+				{"list", "list encrypted files", "", func() error {
+					l, err := secretLines()
+					return page("encrypted files", l, err)
+				}, true},
 			}},
 			{"machine", []item{
-				{"save", "publish your changes", hint(s.toSave, "to save"), func() error { return Save("") }},
-				{"sync", "update this machine", hint(s.behind, "behind"), func() error { return Sync() }},
-				{"status", "full overview", "", func() error { return Status() }},
-				{"answers", "change your setup answers", "", func() error { return Answers("") }},
-				{"question", "add a setup question", "", func() error { return AddQuestion() }},
-				{"undo", "revert the last save", "", func() error { return Undo() }},
-				{"setup", "provision from a dotfiles repo", "", func() error { return Setup("") }},
-				{"doctor", "health check", "", func() error { return Doctor() }},
-				{"info", "machine + repo basics", "", func() error { return Info() }},
+				{"save", "publish your changes", hint(s.toSave, "to save"), func() error { return Save("") }, false},
+				{"sync", "update this machine", hint(s.behind, "behind"), func() error { return Sync() }, false},
+				{"status", "full overview", "", func() error { return Status() }, false},
+				{"answers", "change your setup answers", "", func() error { return Answers("") }, false},
+				{"question", "add a setup question", "", func() error { return AddQuestion() }, false},
+				{"undo", "revert the last save", "", func() error { return Undo() }, false},
+				{"setup", "provision from a dotfiles repo", "", func() error { return Setup("") }, false},
+				{"doctor", "health check", "", func() error { return Doctor() }, false},
+				{"info", "machine + repo basics", "", func() error { return Info() }, false},
 			}},
 			{"casa", []item{
-				{"upgrade", "update casa itself", upgradeHint(s.upgrade), func() error { return UpgradeSelf() }},
-				{"quit", "", "", nil},
+				{"upgrade", "update casa itself", upgradeHint(s.upgrade), func() error { return UpgradeSelf() }, false},
+				{"quit", "", "", nil, false},
 			}},
 		}
 
 		var labels []string
 		run := map[string]func() error{}
+		paged := map[string]bool{}
 		byName := map[string]string{}
 		for _, sec := range sections {
 			for i, it := range sec.items {
@@ -90,6 +116,7 @@ func Menu() error {
 				label += it.hint
 				labels = append(labels, label)
 				run[label] = it.run
+				paged[label] = it.paged
 				byName[it.name] = label
 			}
 		}
@@ -112,8 +139,11 @@ func Menu() error {
 		}
 		if action := run[choice]; action != nil {
 			clearScreen()
-			report(action())
-			pause()
+			err := action()
+			report(err)
+			if !paged[choice] || err != nil {
+				pause()
+			}
 		}
 	}
 }

@@ -99,15 +99,28 @@ func UntrackFile(path string) error {
 	return nil
 }
 
-// ListConfigs prints all managed files with their storage badges.
-func ListConfigs() error {
+// configLines renders all managed files with their storage badges.
+func configLines() ([]string, error) {
 	managed, err := chez.Managed()
+	if err != nil {
+		return nil, err
+	}
+	badges := storageBadges(managed)
+	lines := make([]string, len(managed))
+	for i, m := range managed {
+		lines[i] = home.Tilde(m) + badges[m]
+	}
+	return lines, nil
+}
+
+// ListConfigs prints all managed files (plain output — pipeable).
+func ListConfigs() error {
+	lines, err := configLines()
 	if err != nil {
 		return err
 	}
-	badges := storageBadges(managed)
-	for _, m := range managed {
-		fmt.Println(home.Tilde(m) + badges[m])
+	for _, l := range lines {
+		fmt.Println(l)
 	}
 	return nil
 }

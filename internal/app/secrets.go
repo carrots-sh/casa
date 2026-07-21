@@ -188,15 +188,24 @@ func displayNames(sources []string) ([]string, map[string]string) {
 	return disp, bySource
 }
 
-// ListSecrets prints the encrypted files by their readable target paths.
-func ListSecrets() error {
+// secretLines renders the encrypted files by their readable target paths.
+func secretLines() ([]string, error) {
 	enc, err := chez.EncryptedSources()
+	if err != nil {
+		return nil, err
+	}
+	disp, _ := displayNames(enc)
+	return disp, nil
+}
+
+// ListSecrets prints the encrypted files (plain output — pipeable).
+func ListSecrets() error {
+	lines, err := secretLines()
 	if err != nil {
 		return err
 	}
-	disp, _ := displayNames(enc)
-	for _, d := range disp {
-		fmt.Println(d)
+	for _, l := range lines {
+		fmt.Println(l)
 	}
 	return nil
 }

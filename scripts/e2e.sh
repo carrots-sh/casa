@@ -309,11 +309,15 @@ casa tools list >/dev/null || fail "tools list"
 casa tools update | grep "nothing outdated" >/dev/null || fail "tools update (brew masked)"
 
 # ---- 13. menu opens and quits ---------------------------------------------------
-exp "menu — opens grouped, esc quits" <<EOF
+exp "menu — grouped, list pager opens in-TUI, esc backs out" <<EOF
 spawn casa
 must "configs"; must "pick + edit a config"
 must "tools";   must "install a tool"
-hit "\x1b"
+sleep 0.3; send "list managed"; sleep 0.4; send "\r"
+must "~/.testrc"
+sleep 0.3; send "\x1b"
+must "install a tool"
+sleep 0.3; send "\x1b"
 EOF
 
 # ---- 14. untrack -----------------------------------------------------------------
