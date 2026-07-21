@@ -4,6 +4,15 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.7.0
+
+- The menu is action-first: clusters are act / see / change / undo / casa —
+  the top-level question is "what do I want to do", not "which kind of
+  thing". edit is type-smart (an encrypted pick routes through the secret
+  flow: template validation + same-key re-seal) and list shows everything
+  (files, tools, secrets) in one filterable pager. No action needs a second
+  type pick. CLI commands unchanged.
+
 ## 0.6.1
 
 - Menu clusters are frequency-ordered: daily verb first, list second in

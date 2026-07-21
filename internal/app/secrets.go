@@ -87,7 +87,13 @@ func EditSecret(name string) error {
 	} else if sel, err = ui.Select("edit which secret?", disp); err != nil || sel == "" {
 		return err
 	}
-	source := bySource[sel]
+	return editSecretSource(bySource[sel], sel)
+}
+
+// editSecretSource decrypts a secret source, opens the editor, validates
+// templates, and re-seals with the same key. Also the routing target when
+// `edit` picks an encrypted file.
+func editSecretSource(source, display string) error {
 	plain, err := chez.Decrypt(source)
 	if err != nil {
 		return err
@@ -138,7 +144,7 @@ func EditSecret(name string) error {
 		return err
 	}
 	_ = chez.ApplyNoScripts() // re-render any targets assembled from this secret
-	fmt.Printf("✓ updated secret %s\n", sel)
+	fmt.Printf("✓ updated secret %s\n", display)
 	offerSave("casa: edit secret")
 	return nil
 }

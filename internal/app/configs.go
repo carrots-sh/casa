@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/carrots-sh/casa/internal/chez"
@@ -52,14 +53,27 @@ func pickManaged(title, query string) (string, error) {
 	return byLabel[sel], err
 }
 
-// EditConfig fuzzy-picks a managed file and edits it (encrypted ones transparently).
+// EditConfig fuzzy-picks any managed file and edits it. Encrypted files route
+// through the secret flow (template validation + same-key re-seal) — the
+// action is "edit"; the storage type is casa's problem.
 func EditConfig(name string) error {
 	if err := requireChezmoi(); err != nil {
 		return err
 	}
-	sel, err := pickManaged("edit which config?", name)
+	sel, err := pickManaged("edit which file?", name)
 	if err != nil || sel == "" {
 		return err
+	}
+	if attrs, err := sourceAttrs(sel); err == nil && attrs["encrypted"] {
+		srcs, err := chez.SourcePaths([]string{home.Path(sel)})
+		if err != nil || len(srcs) != 1 {
+			return fmt.Errorf("couldn't find the encrypted source of %s", home.Tilde(sel))
+		}
+		rel, err := filepath.Rel(chez.SourceDir(), srcs[0])
+		if err != nil {
+			return err
+		}
+		return editSecretSource(rel, home.Tilde(sel))
 	}
 	if err := chez.Edit(home.Path(sel)); err != nil {
 		return err

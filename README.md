@@ -68,16 +68,23 @@ menu:
 ```
 casa · your-machine
 
-configs   edit         · pick + edit a config
-          track        · start managing a file
-tools     add          · install a tool
-          update       · upgrade outdated tools   (3 updates)
-          import       · record what's installed here
-secrets   secret       · edit an encrypted file
-          keys         · manage encryption keys
-machine   save         · publish your changes     (2 to save)
+act       edit         · any managed file — encrypted handled
+          add          · install a tool (search or paste)
+          save         · publish your changes     (2 to save)
           sync         · update this machine
+see       list         · everything — files, tools, secrets
+          status       · full overview
+change    update       · upgrade outdated tools   (3 updates)
+          import       · record what's installed here
+          keys         · encryption keys
+undo      untrack · remove · undo
+casa      setup · doctor · upgrade · quit
 ```
+
+The menu is action-first: the top-level question is *what do you want to do*.
+`edit` and `list` are type-smart — encrypted files route through the secret
+flow automatically, and `list` shows everything — so no action ever needs a
+second "which kind?" pick.
 
 Everything in the menu is also a typed command:
 

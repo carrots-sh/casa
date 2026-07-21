@@ -52,50 +52,46 @@ func Menu() error {
 	for {
 		s := computeStatus()
 		sections := []section{
-			// per-cluster order: daily verb first, list second, occasional
-			// actions middle, destructive/rare last.
-			{"configs", []item{
-				{"edit", "pick + edit a config", "", func() error { return EditConfig("") }, false},
-				{"list", "list managed files", "", func() error {
-					l, err := configLines()
-					return page("managed files", l, err)
-				}, true},
+			// action-first: the top-level question is "what do I want to do".
+			// edit and list are type-smart (encrypted files route automatically;
+			// list shows everything), so no action needs a second type pick.
+			{"act", []item{
+				{"edit", "any managed file — encrypted handled", "", func() error { return EditConfig("") }, false},
+				{"add", "install a tool (search or paste)", "", func() error { return AddTool("", "") }, false},
 				{"track", "start managing a file", "", func() error { return TrackFile("") }, false},
-				{"storage", "change how a file is stored", "", func() error { return ChangeStorage("") }, false},
-				{"untrack", "stop managing a file", "", func() error { return UntrackFile("") }, false},
-			}},
-			{"tools", []item{
-				{"add", "install a tool", "", func() error { return AddTool("", "") }, false},
-				{"list", "list recorded tools", "", func() error {
-					l, err := toolLines()
-					return page("recorded tools", l, err)
-				}, true},
-				{"update", "upgrade outdated tools", hint(s.updates, "updates"), func() error { return UpdateTools() }, false},
-				{"import", "record what's installed here", hint(s.unrecorded, "to record"), func() error { return ImportTools() }, false},
-				{"trust", "pick which taps are trusted", "", func() error { return TrustTaps() }, false},
-				{"remove", "uninstall tools", "", func() error { return RemoveTools() }, false},
-			}},
-			{"secrets", []item{
-				{"secret", "edit an encrypted file", "", func() error { return EditSecret("") }, false},
-				{"list", "list encrypted files", "", func() error {
-					l, err := secretLines()
-					return page("encrypted files", l, err)
-				}, true},
 				{"encrypt", "add an encrypted file", "", func() error { return AddSecret("") }, false},
-				{"keys", "manage encryption keys", "", func() error { return Keys() }, false},
-			}},
-			{"machine", []item{
 				{"save", "publish your changes", hint(s.toSave, "to save"), func() error { return Save("") }, false},
 				{"sync", "update this machine", hint(s.behind, "behind"), func() error { return Sync() }, false},
+			}},
+			{"see", []item{
+				{"list", "everything — files, tools, secrets", "", func() error {
+					files, err := configLines()
+					if err != nil {
+						return err
+					}
+					tools, _ := toolLines()
+					return page("everything managed", append(files, tools...), nil)
+				}, true},
 				{"status", "full overview", "", func() error { return Status() }, false},
-				{"answers", "change your setup answers", "", func() error { return Answers("") }, false},
-				{"question", "add a setup question", "", func() error { return AddQuestion() }, false},
-				{"undo", "revert the last save", "", func() error { return Undo() }, false},
-				{"setup", "provision from a dotfiles repo", "", func() error { return Setup("") }, false},
-				{"doctor", "health check", "", func() error { return Doctor() }, false},
 				{"info", "machine + repo basics", "", func() error { return Info() }, false},
 			}},
+			{"change", []item{
+				{"update", "upgrade outdated tools", hint(s.updates, "updates"), func() error { return UpdateTools() }, false},
+				{"import", "record what's installed here", hint(s.unrecorded, "to record"), func() error { return ImportTools() }, false},
+				{"storage", "how a file is stored", "", func() error { return ChangeStorage("") }, false},
+				{"answers", "your setup answers", "", func() error { return Answers("") }, false},
+				{"keys", "encryption keys", "", func() error { return Keys() }, false},
+				{"trust", "trusted taps", "", func() error { return TrustTaps() }, false},
+				{"question", "add a setup question", "", func() error { return AddQuestion() }, false},
+			}},
+			{"undo", []item{
+				{"untrack", "stop managing a file", "", func() error { return UntrackFile("") }, false},
+				{"remove", "uninstall tools", "", func() error { return RemoveTools() }, false},
+				{"undo", "revert the last save", "", func() error { return Undo() }, false},
+			}},
 			{"casa", []item{
+				{"setup", "provision from a dotfiles repo", "", func() error { return Setup("") }, false},
+				{"doctor", "health check", "", func() error { return Doctor() }, false},
 				{"upgrade", "update casa itself", upgradeHint(s.upgrade), func() error { return UpgradeSelf() }, false},
 				{"quit", "", "", nil, false},
 			}},

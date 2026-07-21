@@ -309,15 +309,22 @@ casa tools list >/dev/null || fail "tools list"
 casa tools update | grep "nothing outdated" >/dev/null || fail "tools update (brew masked)"
 
 # ---- 13. menu opens and quits ---------------------------------------------------
-exp "menu — grouped, list pager opens in-TUI, esc backs out" <<EOF
+exp "menu — action-first, unified list pager, esc backs out" <<EOF
 spawn casa
-must "configs"; must "pick + edit a config"
-must "tools";   must "install a tool"
-sleep 0.3; send "list managed"; sleep 0.4; send "\r"
+must "any managed file"; must "install a tool"
+must "everything"
+sleep 0.3; send "everything"; sleep 0.4; send "\r"
 must "~/.testrc"
 sleep 0.3; send "\x1b"
 must "install a tool"
 sleep 0.3; send "\x1b"
+EOF
+
+# smart edit: picking an encrypted file from the unified edit routes through
+# the secret flow (decrypt → edit → same-key re-seal)
+exp "edit — encrypted file routes to secret flow" <<EOF
+spawn casa configs edit .apitoken.key
+must "updated secret"
 EOF
 
 # ---- 14. untrack -----------------------------------------------------------------
