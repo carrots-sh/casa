@@ -1,0 +1,64 @@
+# casa's package manifest — the single source of truth for tools on your machines.
+# Edit freely (casa edits it too; your comments are preserved).
+# On every machine, `chezmoi apply` installs what's listed here and uninstalls
+# what you remove (brew bundle does the diffing).
+
+[packages]
+
+# Homebrew taps
+taps = [
+]
+
+# Taps whose formulae brew bundle may manage without prompting
+# (casa tools trust moves taps here)
+taps_trusted = [
+]
+
+# CLI tools — cross-platform (macOS + Linux via Homebrew)
+brew = [
+]
+
+# macOS-only formulae
+brew_darwin = [
+]
+
+# macOS apps + fonts (casks)
+cask = [
+]
+
+# go install
+go = [
+]
+
+# uv tool install
+uv = [
+]
+
+# npm install -g
+npm = [
+]
+
+# bun add -g
+bun = [
+]
+
+# cargo install
+cargo = [
+]
+
+# Raw Brewfile lines passed through verbatim — for anything with extra
+# arguments (custom tap URLs, link: false, trusted: true, mas/vscode
+# directives, ...). Hand-managed; casa's add/remove don't touch these.
+extra = [
+]
+
+# Same, but only rendered on macOS.
+extra_darwin = [
+]
+
+# Tools that ship their own installer are recorded as blocks, e.g.:
+# [[packages.sh]]
+# bin = "herdr"
+# install = "curl -fsSL https://herdr.dev/install.sh | sh"
+# update = "herdr self-update"  # optional; omit if the tool updates itself
+# os = "darwin"                 # optional: darwin | linux

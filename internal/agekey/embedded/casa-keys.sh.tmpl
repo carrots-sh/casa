@@ -1,0 +1,31 @@
+#!/bin/sh
+# Managed by casa — restore passphrase-encrypted age key backups (.casa/keys)
+# into ~/.config/casa/keys on a new machine, before anything needs decrypting.
+set -e
+KEYDIR="$HOME/.config/casa/keys"
+SRC="{{ .chezmoi.sourceDir }}/.casa/keys"
+[ -d "$SRC" ] || exit 0
+if ! command -v age >/dev/null 2>&1; then
+  echo "WARNING: age not installed yet — restore keys later via: casa secrets keys" >&2
+  exit 0
+fi
+mkdir -p "$KEYDIR" && chmod 700 "$KEYDIR"
+for f in "$SRC"/*.key.age; do
+  [ -e "$f" ] || exit 0
+  name="$(basename "$f" .key.age)"
+  [ -f "$KEYDIR/$name.txt" ] && continue
+  # skipping is always allowed: apply proceeds, and only files this key
+  # guards will fail to decrypt. Restore later via: casa secrets keys
+  printf "Restore age key '%s' from the repo backup? [Y/n] " "$name"
+  ans=""
+  read -r ans < /dev/tty 2>/dev/null || ans="n"
+  case "$ans" in
+    n|N|no|NO) echo "skipped '$name' — restore later via: casa secrets keys"; continue ;;
+  esac
+  if age --decrypt -o "$KEYDIR/$name.txt" "$f"; then
+    chmod 600 "$KEYDIR/$name.txt"
+  else
+    rm -f "$KEYDIR/$name.txt"
+    echo "WARNING: key '$name' not restored — encrypted files it guards won't decrypt." >&2
+  fi
+done

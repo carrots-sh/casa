@@ -1,0 +1,12 @@
+encryption = "age"
+[age]
+{{- $keydir := joinPath .chezmoi.homeDir ".config/casa/keys" }}
+{{- $keys := glob (joinPath $keydir "*.txt") }}
+    identities = [{{ range $i, $p := $keys }}{{ if $i }}, {{ end }}{{ $p | quote }}{{ end }}]
+{{- $def := "" }}
+{{- $marker := joinPath $keydir ".default" }}
+{{- if stat $marker }}{{ $def = joinPath $keydir (printf "%s.txt" (trim (output "cat" $marker))) }}{{ end }}
+{{- if and (or (not $def) (not (stat $def))) $keys }}{{ $def = index $keys 0 }}{{ end }}
+{{- if and $def (stat $def) (lookPath "age-keygen") }}
+    recipient  = {{ output "age-keygen" "-y" $def | trim | quote }}
+{{- end }}

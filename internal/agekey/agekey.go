@@ -6,6 +6,7 @@
 package agekey
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"os/exec"
@@ -174,39 +175,10 @@ const BackupRel = ".casa/keys"
 const RestoreScript = "run_once_before_00-casa-keys.sh.tmpl"
 
 // RestoreScriptBody is fully generic — it globs the backups at run time, so
-// no key names live in the repo.
-const RestoreScriptBody = `#!/bin/sh
-# Managed by casa — restore passphrase-encrypted age key backups (.casa/keys)
-# into ~/.config/casa/keys on a new machine, before anything needs decrypting.
-set -e
-KEYDIR="$HOME/.config/casa/keys"
-SRC="{{ .chezmoi.sourceDir }}/.casa/keys"
-[ -d "$SRC" ] || exit 0
-if ! command -v age >/dev/null 2>&1; then
-  echo "WARNING: age not installed yet — restore keys later via: casa secrets keys" >&2
-  exit 0
-fi
-mkdir -p "$KEYDIR" && chmod 700 "$KEYDIR"
-for f in "$SRC"/*.key.age; do
-  [ -e "$f" ] || exit 0
-  name="$(basename "$f" .key.age)"
-  [ -f "$KEYDIR/$name.txt" ] && continue
-  # skipping is always allowed: apply proceeds, and only files this key
-  # guards will fail to decrypt. Restore later via: casa secrets keys
-  printf "Restore age key '%s' from the repo backup? [Y/n] " "$name"
-  ans=""
-  read -r ans < /dev/tty 2>/dev/null || ans="n"
-  case "$ans" in
-    n|N|no|NO) echo "skipped '$name' — restore later via: casa secrets keys"; continue ;;
-  esac
-  if age --decrypt -o "$KEYDIR/$name.txt" "$f"; then
-    chmod 600 "$KEYDIR/$name.txt"
-  else
-    rm -f "$KEYDIR/$name.txt"
-    echo "WARNING: key '$name' not restored — encrypted files it guards won't decrypt." >&2
-  fi
-done
-`
+// no key names live in the repo (real file: embedded/casa-keys.sh.tmpl).
+//
+//go:embed embedded/casa-keys.sh.tmpl
+var RestoreScriptBody string
 
 // Backup passphrase-encrypts the key's identity into dir (age prompts for
 // the passphrase on the terminal).
@@ -227,17 +199,7 @@ func (k Key) Backup(dir string) (string, error) {
 // AgeBlock is the config template's encryption block. It is fully generic —
 // no key names, paths, or recipients ever enter the repo: identities glob the
 // keys directory at init time and the default recipient is derived from the
-// default key's file on the spot.
-const AgeBlock = `encryption = "age"
-[age]
-{{- $keydir := joinPath .chezmoi.homeDir ".config/casa/keys" }}
-{{- $keys := glob (joinPath $keydir "*.txt") }}
-    identities = [{{ range $i, $p := $keys }}{{ if $i }}, {{ end }}{{ $p | quote }}{{ end }}]
-{{- $def := "" }}
-{{- $marker := joinPath $keydir ".default" }}
-{{- if stat $marker }}{{ $def = joinPath $keydir (printf "%s.txt" (trim (output "cat" $marker))) }}{{ end }}
-{{- if and (or (not $def) (not (stat $def))) $keys }}{{ $def = index $keys 0 }}{{ end }}
-{{- if and $def (stat $def) (lookPath "age-keygen") }}
-    recipient  = {{ output "age-keygen" "-y" $def | trim | quote }}
-{{- end }}
-`
+// default key's file on the spot (real file: embedded/age.toml.tmpl).
+//
+//go:embed embedded/age.toml.tmpl
+var AgeBlock string

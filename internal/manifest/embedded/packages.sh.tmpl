@@ -1,0 +1,46 @@
+#!/bin/bash
+# Managed by casa — installs everything declared in casa's package manifest.
+# Re-runs on `chezmoi apply` whenever the rendered package list below changes.
+# Removing a package from the manifest + apply → brew bundle cleanup uninstalls it.
+set -e
+{{ if hasKey . "packages" -}}
+command -v brew >/dev/null 2>&1 || { echo "casa: brew not found; skipping packages"; exit 0; }
+
+brewfile=$(cat <<'BREWFILE'
+{{ range index .packages "taps" }}tap "{{ . }}"
+{{ end }}{{ range index .packages "taps_trusted" }}tap "{{ . }}", trusted: true
+{{ end }}{{ range index .packages "extra" }}{{ . }}
+{{ end }}{{ range index .packages "brew" }}brew "{{ . }}"
+{{ end }}{{ if eq .chezmoi.os "darwin" }}{{ range index .packages "brew_darwin" }}brew "{{ . }}"
+{{ end }}{{ range index .packages "cask" }}cask "{{ . }}"
+{{ end }}{{ range index .packages "extra_darwin" }}{{ . }}
+{{ end }}{{ end }}{{ range index .packages "go" }}go "{{ . }}"
+{{ end }}{{ range index .packages "uv" }}uv "{{ . }}"
+{{ end }}{{ range index .packages "npm" }}npm "{{ . }}"
+{{ end }}{{ range index .packages "cargo" }}cargo "{{ . }}"
+{{ end }}BREWFILE
+)
+
+# An empty manifest renders an empty Brewfile, and cleanup --force against an
+# empty Brewfile would uninstall everything. Never run against an empty list.
+[ -n "${brewfile//[[:space:]]/}" ] || { echo "casa: package manifest is empty; skipping"; exit 0; }
+
+printf '%s\n' "$brewfile" | brew bundle --file=-
+
+# Uninstall anything installed but no longer declared. brew bundle's uv cleanup
+# mis-parses 'uv tool list' (treats the "- <exe>" bullet lines as a tool named
+# "-") and prints a harmless "invalid value '-'" error while still exiting 0.
+# Filter just that line; preserve the real exit status.
+out=$(printf '%s\n' "$brewfile" | brew bundle cleanup --force --file=- 2>&1) && status=0 || status=$?
+printf '%s\n' "$out" | grep -vF "invalid value '-'" || true
+
+# bun globals — brew bundle can't manage these. bun add -g is idempotent and
+# fast, so just re-assert the list. ponytail: no cleanup diffing; removing a
+# bun entry by hand needs a manual bun remove -g (casa's rm does it for you).
+{{ if index .packages "bun" -}}
+if command -v bun >/dev/null 2>&1; then
+{{ range index .packages "bun" }}  bun add -g "{{ . }}"
+{{ end }}fi
+{{ end -}}
+exit "$status"
+{{ end -}}

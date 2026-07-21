@@ -1,0 +1,16 @@
+#!/bin/sh
+# Managed by casa — tools that ship their own installer, declared under
+# [[packages.sh]] in casa's package manifest. Re-runs on `chezmoi apply`
+# when the list changes; the command -v guards keep re-runs free.
+set -e
+{{ if hasKey . "packages" -}}
+{{ range index .packages "sh" -}}
+{{ $os := default "" (get . "os") -}}
+{{ if or (not $os) (eq $os $.chezmoi.os) -}}
+if ! command -v {{ .bin }} >/dev/null 2>&1; then
+  echo "casa: installing {{ .bin }}..."
+  {{ .install }}
+fi
+{{ end -}}
+{{ end -}}
+{{ end -}}
