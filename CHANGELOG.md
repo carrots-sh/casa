@@ -4,6 +4,12 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.5.3
+
+- Internal: the generated script and template bodies are embedded files
+  (internal/*/embedded/) instead of Go string constants — byte-identical
+  output, no behavior change.
+
 ## 0.5.2
 
 - Key restore on a new machine is skippable: the restore script asks
