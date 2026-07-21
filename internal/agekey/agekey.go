@@ -204,7 +204,8 @@ func (k Key) Backup(dir string) (string, error) {
 		return "", err
 	}
 	out := filepath.Join(dir, k.Name+".key.age")
-	c := exec.Command("age", "--encrypt", "--passphrase", "-o", out, k.Identity)
+	// --armor: base64 text, so the repo file diffs and displays sanely
+	c := exec.Command("age", "--encrypt", "--passphrase", "--armor", "-o", out, k.Identity)
 	c.Stdin, c.Stdout, c.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := c.Run(); err != nil {
 		return "", fmt.Errorf("age --passphrase: %w", err)
