@@ -2,6 +2,7 @@
 package pm
 
 import (
+	"os/exec"
 	"regexp"
 	"strings"
 )
@@ -15,6 +16,16 @@ func (bunPkg) UpgradeAll() error          { return run("bun", "update", "-g") }
 
 func (bunPkg) Installed() []string {
 	return parseBunList(capture("bun", "pm", "ls", "-g"))
+}
+
+// Search: bun has no search CLI, but it installs from the npm registry — so
+// registry hits surface as bun rows (bun is the default installer for them;
+// npm remains available as an explicit manager pick).
+func (bunPkg) Search(query string) []string {
+	if _, err := exec.LookPath("bun"); err != nil {
+		return nil // no bun → npm's own search takes over
+	}
+	return npmRegistrySearch(query)
 }
 
 var ansiSeq = regexp.MustCompile(`\x1b\[[0-9;]*m`)

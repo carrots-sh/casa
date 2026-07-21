@@ -2,6 +2,7 @@
 package pm
 
 import (
+	"os/exec"
 	"strings"
 )
 
@@ -24,7 +25,18 @@ func (npmPkg) Installed() []string {
 	return out
 }
 
+// Search: bun installs from the same registry and is the preferred
+// installer, so npm's search stays silent when bun is present — the hits
+// show up as bun rows instead (no duplicates, safer default installs).
 func (npmPkg) Search(query string) []string {
+	if _, err := exec.LookPath("bun"); err == nil {
+		return nil
+	}
+	return npmRegistrySearch(query)
+}
+
+// npmRegistrySearch queries the npm registry via the npm CLI.
+func npmRegistrySearch(query string) []string {
 	var out []string
 	for _, l := range lines(capture("npm", "search", query, "--parseable")) {
 		if name, _, _ := strings.Cut(l, "\t"); name != "" {

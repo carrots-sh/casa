@@ -4,6 +4,13 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.11.0
+
+- npm-registry search results install via **bun** by default: bun pulls
+  from the same registry, so hits appear as bun rows (installed with
+  `bun add -g`, recorded under `bun`). npm search only surfaces when bun
+  isn't installed; npm remains available as an explicit manager pick.
+
 ## 0.10.1
 
 - Status and the drift flow agree: "local drift" counts only reviewable
