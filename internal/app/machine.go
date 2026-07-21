@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/carrots-sh/casa/internal/chez"
 	"github.com/carrots-sh/casa/internal/config"
+	"github.com/carrots-sh/casa/internal/home"
 	"github.com/carrots-sh/casa/internal/pm"
 	"github.com/carrots-sh/casa/internal/ui"
 )
@@ -128,6 +130,31 @@ func reachable(url string) bool {
 		"GIT_SSH_COMMAND=ssh -oBatchMode=yes -oConnectTimeout=8 -oStrictHostKeyChecking=accept-new",
 	)
 	return c.Run() == nil
+}
+
+// Cd opens a subshell inside the dotfiles repo (like chezmoi cd) — the
+// parent shell's cwd can't be changed from a child process, so exit returns
+// you to where you were.
+func Cd() error {
+	dir := chez.SourceDir()
+	if _, err := os.Stat(dir); err != nil {
+		return fmt.Errorf("no dotfiles repo at %s — run casa machine setup first", home.Tilde(dir))
+	}
+	sh := os.Getenv("SHELL")
+	if sh == "" {
+		sh = "/bin/sh"
+	}
+	fmt.Printf("opening a shell in %s — exit to return\n", home.Tilde(dir))
+	c := exec.Command(sh)
+	c.Dir = dir
+	c.Stdout, c.Stderr, c.Stdin = os.Stdout, os.Stderr, os.Stdin
+	if err := c.Run(); err != nil {
+		if _, ok := errors.AsType[*exec.ExitError](err); ok {
+			return nil // the subshell's last exit status isn't casa's error
+		}
+		return err
+	}
+	return nil
 }
 
 // Sync brings this machine fully up to date: upgrade packages, then pull the

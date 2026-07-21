@@ -4,6 +4,11 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.12.0
+
+- `casa cd` opens a subshell inside your dotfiles repo, like `chezmoi cd` —
+  exit to return to where you were.
+
 ## 0.11.0
 
 - npm-registry search results install via **bun** by default: bun pulls

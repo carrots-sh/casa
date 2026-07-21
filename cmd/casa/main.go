@@ -23,6 +23,7 @@ const usage = `casa — easy chezmoi: manage your configs and tools from one fri
 
 usage: casa [command]           (no command opens the interactive menu)
 shortcuts: casa edit [name] · casa save [msg] · casa sync · casa status
+           casa cd              open a shell inside your dotfiles repo (exit to return)
            casa upgrade         update casa itself to the latest release
 
 files     edit [name]           pick and edit a file (encrypted handled transparently)
@@ -95,6 +96,8 @@ func dispatch(args []string) error {
 		return app.Status()
 	case "upgrade":
 		return app.UpgradeSelf()
+	case "cd":
+		return app.Cd()
 	case "files", "configs": // configs: legacy alias
 		switch arg(args, 1) {
 		case "edit":
