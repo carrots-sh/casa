@@ -138,15 +138,13 @@ func Status() ([]string, error) {
 	return NonEmpty(s), nil
 }
 
-// Diff returns what apply would change for a target (captured, so chezmoi
-// renders plain text without a pager).
-func Diff(homePath string) (string, error) {
-	o, err := out("diff", homePath)
-	if o != "" {
-		return o, nil // chezmoi may exit non-zero with a usable diff
-	}
-	return o, err
-}
+// DiffShow prints what apply would change for a target straight to the
+// terminal — colored (tty), no pager, no capture.
+func DiffShow(homePath string) error { return run("diff", "--no-pager", homePath) }
+
+// ApplyForce applies a target even when it changed outside chezmoi — used
+// after the user explicitly chose to overwrite (chezmoi would re-prompt).
+func ApplyForce(homePath string) error { return run("apply", "--force", homePath) }
 
 // Apply applies the given target paths (all if none), running scripts.
 func Apply(paths ...string) error { return run(append([]string{"apply"}, paths...)...) }

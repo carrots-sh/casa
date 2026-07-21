@@ -4,6 +4,13 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.9.1
+
+- Drift diffs print colored straight to the terminal (chezmoi's diff, no
+  pager, no line-cursor buffer); pending run scripts no longer appear as
+  "drifted files"; restoring the repo version forces past chezmoi's own
+  overwrite re-prompt.
+
 ## 0.9.0
 
 - **Drift review** (`files drift`, also in the menu with a background

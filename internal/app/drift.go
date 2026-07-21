@@ -4,7 +4,6 @@ package app
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/carrots-sh/casa/internal/chez"
 	"github.com/carrots-sh/casa/internal/home"
@@ -12,6 +11,8 @@ import (
 )
 
 // driftedTargets parses `chezmoi status` into home-relative target paths.
+// Pending run scripts ('R' status) are not file drift — they re-run on the
+// next apply and have nothing to keep or restore.
 func driftedTargets() ([]string, error) {
 	lines, err := chez.Status()
 	if err != nil {
@@ -19,7 +20,7 @@ func driftedTargets() ([]string, error) {
 	}
 	var out []string
 	for _, l := range lines {
-		if len(l) > 3 {
+		if len(l) > 3 && l[0] != 'R' && l[1] != 'R' {
 			out = append(out, l[3:])
 		}
 	}
@@ -56,16 +57,14 @@ func Drift() error {
 	}
 }
 
-// resolveDrift shows the diff for one target, then applies the chosen side.
+// resolveDrift shows the diff for one target (colored, straight to the
+// terminal — no line-cursor pager), then applies the chosen side.
 func resolveDrift(target, display string) error {
-	diff, err := chez.Diff(home.Path(target))
-	if err != nil {
+	fmt.Printf("── %s ──  (- lines = your local change)\n\n", display)
+	if err := chez.DiffShow(home.Path(target)); err != nil {
 		return err
 	}
-	diffLines := strings.Split(strings.TrimRight(diff, "\n"), "\n")
-	if err := page("diff · "+display, diffLines, nil); err != nil {
-		return err
-	}
+	fmt.Println()
 	const (
 		keep    = "keep my local version · record it in the repo"
 		restore = "restore the repo version · overwrite my local change"
@@ -84,7 +83,7 @@ func resolveDrift(target, display string) error {
 		fmt.Printf("✓ recorded your local %s\n", display)
 		offerSave("casa: update " + display)
 	case restore:
-		if err := chez.Apply(home.Path(target)); err != nil {
+		if err := chez.ApplyForce(home.Path(target)); err != nil {
 			return err
 		}
 		invalidateStatus()
