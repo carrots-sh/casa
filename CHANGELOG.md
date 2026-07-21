@@ -4,6 +4,37 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.2.0
+
+- **Multi-key encryption** (`secrets keys`): create keys, adopt a legacy
+  `~/key.txt`, pick a default, choose the key per secret, delete with orphan
+  detection (files only that key opens are re-encrypted with a survivor
+  first), and back private identities up to doppler. Public recipients live
+  committed in `.casadata/keys.toml`; the config template's `[age]` block is
+  generated with stat-filtered identities so machines holding only some keys
+  still decrypt what they can. Editing a secret re-seals with the same key
+  that sealed it.
+- **Smart add**: paste any install command (`go install …`, `cargo install`,
+  `npm -g`, `uv tool`, `brew`, `bun add -g`, `curl … | sh`) into the add flow —
+  casa detects the manager, installs only if missing, and records it. Install
+  directly in your terminal and the menu shows an `(N to record)` drift hint;
+  `tools import` records exactly what's missing.
+- **bun** is a full manager: add/remove/import/update -g, paste detection,
+  and an idempotent `bun add -g` loop on apply (brew bundle can't drive bun).
+- **Trusted taps** (`tools trust`): pick which taps brew bundle may manage
+  without prompting (`tap "…", trusted: true`).
+- **PATH self-healing**: manager bin dirs (go, cargo, bun, uv, brew incl.
+  linuxbrew and keg-only rustup) are prepended when missing, so casa works
+  under a minimal environment; `doctor` leads with a deps table.
+- **Fresh machine**: plain `casa` bootstraps chezmoi itself (brew, or
+  get.chezmoi.io) before setup — verified in an isolated Linux container.
+- **UX**: clean-screen menu with grouped commands, consistent controls
+  (tab select · enter submit · esc/← back), fzf-style path completion,
+  `~/`-style paths everywhere, single-pick track.
+- **Internals**: managers behind a `pm.Manager` interface (one file each),
+  chezmoi and prompt seams for tests, one-topic files, `make ship`
+  (fmt + lint + modernize + tests + pty e2e + install).
+
 ## 0.1.0
 
 First semver release — everything since the last date-based one:
