@@ -158,16 +158,6 @@ func height(n int) int {
 	return 0
 }
 
-// multiHeight is height for MultiSelect, whose auto-size clips the last row
-// (the title is subtracted from the options height), so short lists get an
-// explicit options+title height instead of 0.
-func multiHeight(n int) int {
-	if n > 10 {
-		return 14
-	}
-	return n + 1
-}
-
 func (huhPrompter) Select(title string, opts []string, def string) (string, error) {
 	v := def
 	err := run(huh.NewForm(huh.NewGroup(
@@ -184,20 +174,22 @@ func (huhPrompter) Select(title string, opts []string, def string) (string, erro
 	return v, err
 }
 
+// MultiSelect uses casa's fzf-style widget: type to filter, space to toggle,
+// selections persist across filter edits.
 func (huhPrompter) MultiSelect(title string, opts []string, preselected []string) ([]string, error) {
-	v := append([]string{}, preselected...)
-	err := run(huh.NewForm(huh.NewGroup(
-		huh.NewMultiSelect[string]().
-			Title(title).
-			Options(huh.NewOptions(opts...)...).
-			Height(multiHeight(len(opts))).
-			Filterable(true).
-			Value(&v),
-	)).WithTheme(theme()), true)
-	if errors.Is(err, errCancel) {
+	m := newFzfMulti(title, opts, preselected)
+	final, err := tea.NewProgram(m).Run()
+	if err != nil {
+		return nil, err
+	}
+	fm := final.(*fzfMulti)
+	if fm.quit {
+		os.Exit(0)
+	}
+	if fm.back || !fm.done {
 		return nil, nil
 	}
-	return v, err
+	return fm.selected(), nil
 }
 
 // Path prompts for a filesystem path with as-you-type completion

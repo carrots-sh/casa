@@ -4,6 +4,14 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.10.0
+
+- **fzf-style multiselects**: in remove, update, import, trust, and every
+  other multi-pick, just type to filter — no `/` needed — space toggles the
+  highlighted row, and selections persist while you type and erase across
+  multiple searches. ctrl+a toggles everything visible; the footer counts
+  what's selected.
+
 ## 0.9.2
 
 - Key copy is consistent: space is the advertised select/toggle key
