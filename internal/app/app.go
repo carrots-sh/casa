@@ -6,15 +6,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/carrots-sh/casa/internal/brewfile"
 	"github.com/carrots-sh/casa/internal/chez"
 	"github.com/carrots-sh/casa/internal/config"
+	"github.com/carrots-sh/casa/internal/manifest"
 )
 
-// bf builds the Brewfile handle from config.
-func bf() brewfile.Brewfile {
-	c := config.Load()
-	return brewfile.Brewfile{Tmpl: c.BrewfileTmpl(), Anchor: "casa"}
+// mf builds the package-manifest handle from config.
+func mf() manifest.Manifest {
+	return manifest.Manifest{Path: config.Load().ManifestPath()}
 }
 
 // requireChezmoi returns an error if chezmoi isn't installed.

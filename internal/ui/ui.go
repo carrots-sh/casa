@@ -3,6 +3,7 @@ package ui
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"charm.land/bubbles/v2/key"
@@ -98,8 +99,12 @@ func Input(title string) (string, error) {
 	return v, err
 }
 
-// Confirm prompts yes/no.
+// Confirm prompts yes/no. CASA_YES=1 answers yes without prompting (scripting/tests).
 func Confirm(title string) (bool, error) {
+	if os.Getenv("CASA_YES") == "1" {
+		fmt.Println(title + "  → yes (CASA_YES)")
+		return true, nil
+	}
 	var v bool
 	err := run(huh.NewForm(huh.NewGroup(
 		huh.NewConfirm().Title(title).Value(&v),

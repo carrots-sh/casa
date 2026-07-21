@@ -123,6 +123,94 @@ func UpgradeAll(mgr string) error {
 	return nil
 }
 
+// Installed returns the top-level packages currently installed via mgr —
+// used to seed the manifest from an existing machine. Best-effort: a missing
+// manager just returns nothing.
+func Installed(mgr string) []string {
+	switch mgr {
+	case "tap":
+		var out []string
+		for _, t := range lines(capture("brew", "tap")) {
+			if t != "homebrew/core" && t != "homebrew/cask" && t != "homebrew/bundle" {
+				out = append(out, t)
+			}
+		}
+		return out
+	case "brew":
+		if out := lines(capture("brew", "leaves", "--installed-on-request")); len(out) > 0 {
+			return out
+		}
+		return lines(capture("brew", "leaves"))
+	case "cask":
+		return lines(capture("brew", "list", "--cask"))
+	case "go":
+		return goInstalled()
+	case "uv":
+		// `uv tool list` prints "name v1.2.3" headers with "- <exe>" bullets under each.
+		var out []string
+		for _, l := range lines(capture("uv", "tool", "list")) {
+			if strings.HasPrefix(l, "-") || strings.HasPrefix(l, "warning") {
+				continue
+			}
+			if f := strings.Fields(l); len(f) >= 2 && strings.HasPrefix(f[1], "v") {
+				out = append(out, f[0])
+			}
+		}
+		return out
+	case "npm":
+		// parseable: one node_modules path per line; scoped names keep their @scope/.
+		var out []string
+		for _, l := range lines(capture("npm", "ls", "-g", "--depth=0", "--parseable")) {
+			if _, n, ok := strings.Cut(l, "node_modules/"); ok && n != "" && n != "npm" && n != "corepack" {
+				out = append(out, n)
+			}
+		}
+		return out
+	case "cargo":
+		// `cargo install --list` headers look like "eza v0.18.0:"; the indented
+		// binary lines under them don't end with ':'.
+		var out []string
+		for _, l := range lines(capture("cargo", "install", "--list")) {
+			if strings.HasSuffix(l, ":") {
+				out = append(out, strings.Fields(l)[0])
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+// goInstalled recovers each go-installed binary's main package path via
+// `go version -m`, which is what `go install <path>@latest` needs.
+func goInstalled() []string {
+	gobin := strings.TrimSpace(capture("go", "env", "GOBIN"))
+	if gobin == "" {
+		if gp := strings.TrimSpace(capture("go", "env", "GOPATH")); gp != "" {
+			gobin = filepath.Join(gp, "bin")
+		}
+	}
+	if gobin == "" {
+		return nil
+	}
+	ents, err := os.ReadDir(gobin)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, e := range ents {
+		if e.IsDir() {
+			continue
+		}
+		for _, l := range lines(capture("go", "version", "-m", filepath.Join(gobin, e.Name()))) {
+			if f := strings.Fields(l); len(f) >= 2 && f[0] == "path" {
+				out = append(out, f[1])
+				break
+			}
+		}
+	}
+	return out
+}
+
 // Result is a single search hit: which manager offers the package, and its name.
 type Result struct{ Mgr, Name string }
 
