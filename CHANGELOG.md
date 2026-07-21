@@ -4,6 +4,14 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.5.2
+
+- Key restore on a new machine is skippable: the restore script asks
+  "Restore age key ... [Y/n]" before prompting for the passphrase; declining
+  (or a wrong passphrase, or no terminal) skips with a warning instead of
+  aborting the whole apply. Only files that key guards fail to decrypt;
+  restore later via casa secrets keys.
+
 ## 0.5.1
 
 - Key backups in the repo are ASCII-armored (base64 text) instead of raw

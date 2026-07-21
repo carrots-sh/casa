@@ -191,9 +191,20 @@ for f in "$SRC"/*.key.age; do
   [ -e "$f" ] || exit 0
   name="$(basename "$f" .key.age)"
   [ -f "$KEYDIR/$name.txt" ] && continue
-  echo "Restoring age key '$name' (enter its passphrase):"
-  age --decrypt -o "$KEYDIR/$name.txt" "$f"
-  chmod 600 "$KEYDIR/$name.txt"
+  # skipping is always allowed: apply proceeds, and only files this key
+  # guards will fail to decrypt. Restore later via: casa secrets keys
+  printf "Restore age key '%s' from the repo backup? [Y/n] " "$name"
+  ans=""
+  read -r ans < /dev/tty 2>/dev/null || ans="n"
+  case "$ans" in
+    n|N|no|NO) echo "skipped '$name' — restore later via: casa secrets keys"; continue ;;
+  esac
+  if age --decrypt -o "$KEYDIR/$name.txt" "$f"; then
+    chmod 600 "$KEYDIR/$name.txt"
+  else
+    rm -f "$KEYDIR/$name.txt"
+    echo "WARNING: key '$name' not restored — encrypted files it guards won't decrypt." >&2
+  fi
 done
 `
 
