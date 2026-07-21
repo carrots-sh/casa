@@ -165,15 +165,14 @@ chezmoi --source "$CASA_SOURCE" cat "$HOME/.apitoken.key" | grep -q "e2e-appende
 # ---- 6b. keys: create second, encrypt with it, delete → orphan re-encrypt ----
 exp "keys — create a second key" <<EOF
 spawn casa secrets keys
-must "generate + register"
+must "generate in"
 sleep 0.3; send "new"; sleep 0.3; send "\r"
 must "key name"; sleep 0.3; send "vault\r"
 must "created vault"
-must "saved + pushed"
-must "generate + register"
+must "generate in"
 sleep 0.3; send "\x1b"
 EOF
-grep -q 'vault' "$CASA_SOURCE/.casadata/keys.toml" || fail "vault not registered"
+[ -f "$HOME/.config/casa/keys/vault.txt" ] || fail "vault key file missing"
 
 printf 'vault-secret\n' > "$HOME/.vault.token"
 exp "secrets add — pick the non-default key" <<EOF
@@ -184,7 +183,7 @@ must "encrypted with vault"
 must "saved + pushed"
 EOF
 # main's identity must NOT open it; the registry-driven config must
-age --decrypt --identity "$HOME/key.txt" \
+age --decrypt --identity "$HOME/.config/casa/keys/main.txt" \
   "$CASA_SOURCE/encrypted_dot_vault.token.age" >/dev/null 2>&1 \
   && fail "vault file readable by main (wrong key used)"
 chezmoi --source "$CASA_SOURCE" cat "$HOME/.vault.token" | grep -q vault-secret \
@@ -192,7 +191,7 @@ chezmoi --source "$CASA_SOURCE" cat "$HOME/.vault.token" | grep -q vault-secret 
 
 exp "keys — delete vault, orphan re-encrypted with main" <<EOF
 spawn casa secrets keys
-must "generate + register"
+must "generate in"
 sleep 0.3; send "vault"; sleep 0.3; send "\r"
 must "make default"
 sleep 0.3; send "delete"; sleep 0.3; send "\r"
@@ -203,10 +202,10 @@ must "delete the private key file"
 sleep 0.3; send "y"
 must "deleted key vault"
 must "saved + pushed"
-must "generate + register"
+must "generate in"
 sleep 0.3; send "\x1b"
 EOF
-grep -q 'vault' "$CASA_SOURCE/.casadata/keys.toml" && fail "vault still registered"
+[ ! -f "$HOME/.config/casa/keys/vault.txt" ] || fail "vault key file still present"
 chezmoi --source "$CASA_SOURCE" cat "$HOME/.vault.token" | grep -q vault-secret \
   || fail "orphan not readable after re-encrypt with main"
 

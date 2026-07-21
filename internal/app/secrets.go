@@ -26,11 +26,11 @@ func AddSecret(path string) error {
 		}
 	}
 	abs := home.Expand(path)
-	r, err := ensureKeys()
+	keys, err := ensureKeys()
 	if err != nil {
 		return err
 	}
-	k, err := pickEncryptKey(r)
+	k, err := pickEncryptKey(keys)
 	if err != nil || k.Name == "" {
 		return err
 	}
@@ -41,7 +41,7 @@ func AddSecret(path string) error {
 	if err := chez.AddEncrypt(abs); err != nil { // seals with the default key
 		return err
 	}
-	if k.Name != r.Default {
+	if def, _ := agekey.Default(); k.Name != def.Name {
 		if err := reEncryptSource(abs, plain, k); err != nil {
 			return err
 		}
@@ -144,16 +144,16 @@ func EditSecret(name string) error {
 }
 
 // sealSecret re-encrypts an edited secret with the SAME key that sealed it
-// (probed via the registry), so editing never silently rotates a file to the
-// default key. Falls back to chezmoi's encryption when no key matches.
+// (probed against the keys directory), so editing never silently rotates a
+// file to the default key. Falls back to chezmoi's encryption otherwise.
 func sealSecret(plaintext, sourceRel string) error {
 	abs := filepath.Join(chez.SourceDir(), sourceRel)
-	if r, err := keyReg(); err == nil {
-		for _, k := range r.Keys {
-			if !agekey.CanDecrypt(k, abs) {
+	if keys, err := agekey.List(); err == nil {
+		for _, k := range keys {
+			if !k.CanDecrypt(abs) {
 				continue
 			}
-			sealed, err := agekey.Encrypt([]byte(plaintext), k.Recipient)
+			sealed, err := k.Encrypt([]byte(plaintext))
 			if err != nil {
 				return err
 			}

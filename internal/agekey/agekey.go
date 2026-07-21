@@ -1,7 +1,8 @@
-// Package agekey manages casa's age keys: a committed registry of PUBLIC
-// recipients (.casadata/keys.toml) and per-machine PRIVATE identity files.
-// Encryption needs only a recipient, so any machine can encrypt to any key;
-// decryption needs the identity file, which never enters the repo.
+// Package agekey manages casa's age keys, registry-free: a key IS a private
+// identity file in ~/.config/casa/keys/<name>.txt. Names are filenames,
+// recipients are derived from the files (age-keygen -y), and the default is a
+// local .default marker — so neither repo ever stores key names, paths, or
+// recipients; every machine just reads the keys directory by convention.
 package agekey
 
 import (
@@ -12,102 +13,81 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/carrots-sh/casa/internal/home"
 )
 
-// RegistryRel is the registry's path relative to the source dir. It lives in
-// .casadata so the config template can render [age] from it as chezmoi data.
-const RegistryRel = ".casadata/keys.toml"
+// Dir is where keys live on every machine.
+func Dir() string { return home.Path(".config/casa/keys") }
 
-// Key is one age key: a public recipient plus where its identity lives.
+// Key is one age key: name = filename without .txt.
 type Key struct {
-	Name      string
-	Recipient string `toml:"recipient"`
-	Identity  string `toml:"identity"` // path with ~; private file, never committed
+	Name     string
+	Identity string // absolute path of the private identity file
 }
 
-// Present reports whether the private identity exists on this machine.
-func (k Key) Present() bool {
-	_, err := os.Stat(home.Expand(k.Identity))
-	return err == nil
-}
+// Path returns the identity path a key with this name would have.
+func Path(name string) string { return filepath.Join(Dir(), name+".txt") }
 
-// Registry is the committed key set.
-type Registry struct {
-	Path    string
-	Default string
-	Keys    []Key // sorted by name
-}
-
-type regDoc struct {
-	Keys struct {
-		Default string         `toml:"default"`
-		Named   map[string]Key `toml:"named"`
-	} `toml:"keys"`
-}
-
-// Load reads the registry (empty registry if the file doesn't exist).
-func Load(path string) (Registry, error) {
-	r := Registry{Path: path}
-	var d regDoc
-	if _, err := toml.DecodeFile(path, &d); err != nil {
-		if os.IsNotExist(err) {
-			return r, nil
+// List returns the keys present on this machine, sorted by name.
+func List() ([]Key, error) {
+	ents, err := os.ReadDir(Dir())
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var keys []Key
+	for _, e := range ents {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".txt") {
+			continue
 		}
-		return r, err
+		name := strings.TrimSuffix(e.Name(), ".txt")
+		keys = append(keys, Key{Name: name, Identity: Path(name)})
 	}
-	r.Default = d.Keys.Default
-	for name, k := range d.Keys.Named {
-		k.Name = name
-		r.Keys = append(r.Keys, k)
-	}
-	sort.Slice(r.Keys, func(i, j int) bool { return r.Keys[i].Name < r.Keys[j].Name })
-	return r, nil
+	sort.Slice(keys, func(i, j int) bool { return keys[i].Name < keys[j].Name })
+	return keys, nil
 }
 
-// Save writes the registry (recipients are public — safe to commit).
-func (r Registry) Save() error {
-	var b strings.Builder
-	b.WriteString("# casa's age keys — public recipients only; private identities stay on\n")
-	b.WriteString("# each machine at the listed paths. Managed by `casa secrets keys`.\n\n")
-	b.WriteString("[keys]\n")
-	fmt.Fprintf(&b, "default = %q\n", r.Default)
-	for _, k := range r.Keys {
-		fmt.Fprintf(&b, "\n[keys.named.%s]\n", k.Name)
-		fmt.Fprintf(&b, "recipient = %q\n", k.Recipient)
-		fmt.Fprintf(&b, "identity = %q\n", k.Identity)
+// Get returns the named key if its identity file exists.
+func Get(name string) (Key, bool) {
+	if _, err := os.Stat(Path(name)); err != nil {
+		return Key{}, false
 	}
-	if err := os.MkdirAll(filepath.Dir(r.Path), 0o755); err != nil {
-		return err
-	}
-	return os.WriteFile(r.Path, []byte(b.String()), 0o644)
+	return Key{Name: name, Identity: Path(name)}, true
 }
 
-// Get returns the named key.
-func (r Registry) Get(name string) (Key, bool) {
-	for _, k := range r.Keys {
-		if k.Name == name {
+// Default returns the default key: the .default marker's choice when valid,
+// else the first key — the same rule the generated [age] block applies, so
+// casa and chezmoi always agree.
+func Default() (Key, bool) {
+	if b, err := os.ReadFile(filepath.Join(Dir(), ".default")); err == nil {
+		if k, ok := Get(strings.TrimSpace(string(b))); ok {
 			return k, true
 		}
+	}
+	keys, _ := List()
+	if len(keys) > 0 {
+		return keys[0], true
 	}
 	return Key{}, false
 }
 
-// DefaultKey returns the default key when set and known.
-func (r Registry) DefaultKey() (Key, bool) { return r.Get(r.Default) }
+// SetDefault records the default key in the local marker.
+func SetDefault(name string) error {
+	if err := os.MkdirAll(Dir(), 0o700); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(Dir(), ".default"), []byte(name+"\n"), 0o644)
+}
 
-// IdentityDir is where casa creates new private keys.
-func IdentityDir() string { return home.Path(".config/casa/keys") }
-
-// Generate creates a new identity at ~/.config/casa/keys/<name>.txt and
-// returns the key. Fails if the name is taken or the file exists.
+// Generate creates a new identity at ~/.config/casa/keys/<name>.txt.
 func Generate(name string) (Key, error) {
-	p := filepath.Join(IdentityDir(), name+".txt")
+	p := Path(name)
 	if _, err := os.Stat(p); err == nil {
 		return Key{}, fmt.Errorf("key file already exists: %s", home.Tilde(p))
 	}
-	if err := os.MkdirAll(IdentityDir(), 0o700); err != nil {
+	if err := os.MkdirAll(Dir(), 0o700); err != nil {
 		return Key{}, err
 	}
 	out, err := exec.Command("age-keygen", "-o", p).CombinedOutput()
@@ -115,25 +95,50 @@ func Generate(name string) (Key, error) {
 		return Key{}, fmt.Errorf("age-keygen: %s", strings.TrimSpace(string(out)))
 	}
 	_ = os.Chmod(p, 0o600)
-	rec, err := RecipientOf(p)
-	if err != nil {
-		return Key{}, err
-	}
-	return Key{Name: name, Recipient: rec, Identity: home.Tilde(p)}, nil
+	return Key{Name: name, Identity: p}, nil
 }
 
-// RecipientOf derives the public recipient from an identity file.
-func RecipientOf(identityPath string) (string, error) {
-	out, err := exec.Command("age-keygen", "-y", home.Expand(identityPath)).Output()
+// Adopt moves an identity file from elsewhere (e.g. a legacy ~/key.txt) into
+// the keys directory under name.
+func Adopt(from, name string) (Key, error) {
+	p := Path(name)
+	if _, err := os.Stat(p); err == nil {
+		return Key{}, fmt.Errorf("key %q already exists", name)
+	}
+	if err := os.MkdirAll(Dir(), 0o700); err != nil {
+		return Key{}, err
+	}
+	if err := os.Rename(from, p); err != nil {
+		// cross-device fallback
+		b, rerr := os.ReadFile(from)
+		if rerr != nil {
+			return Key{}, err
+		}
+		if err := os.WriteFile(p, b, 0o600); err != nil {
+			return Key{}, err
+		}
+		_ = os.Remove(from)
+	}
+	_ = os.Chmod(p, 0o600)
+	return Key{Name: name, Identity: p}, nil
+}
+
+// Recipient derives the key's public recipient from its identity file.
+func (k Key) Recipient() (string, error) {
+	out, err := exec.Command("age-keygen", "-y", k.Identity).Output()
 	if err != nil {
-		return "", fmt.Errorf("age-keygen -y: %w", err)
+		return "", fmt.Errorf("age-keygen -y %s: %w", home.Tilde(k.Identity), err)
 	}
 	return strings.TrimSpace(string(out)), nil
 }
 
-// Encrypt seals plaintext for recipient (armored, like chezmoi's age files).
-func Encrypt(plaintext []byte, recipient string) ([]byte, error) {
-	c := exec.Command("age", "--encrypt", "--armor", "--recipient", recipient)
+// Encrypt seals plaintext for the key (armored, like chezmoi's age files).
+func (k Key) Encrypt(plaintext []byte) ([]byte, error) {
+	rec, err := k.Recipient()
+	if err != nil {
+		return nil, err
+	}
+	c := exec.Command("age", "--encrypt", "--armor", "--recipient", rec)
 	c.Stdin = strings.NewReader(string(plaintext))
 	out, err := c.Output()
 	if err != nil {
@@ -142,44 +147,36 @@ func Encrypt(plaintext []byte, recipient string) ([]byte, error) {
 	return out, nil
 }
 
-// CanDecrypt reports whether this key's identity opens the encrypted file.
-func CanDecrypt(k Key, encryptedPath string) bool {
-	if !k.Present() {
-		return false
-	}
-	c := exec.Command("age", "--decrypt", "--identity", home.Expand(k.Identity), encryptedPath)
+// CanDecrypt reports whether this key opens the encrypted file.
+func (k Key) CanDecrypt(encryptedPath string) bool {
+	c := exec.Command("age", "--decrypt", "--identity", k.Identity, encryptedPath)
 	c.Stdout, c.Stderr = nil, nil
 	return c.Run() == nil
 }
 
 // Decrypt opens the encrypted file with the key's identity.
-func Decrypt(k Key, encryptedPath string) ([]byte, error) {
-	out, err := exec.Command("age", "--decrypt", "--identity", home.Expand(k.Identity), encryptedPath).Output()
+func (k Key) Decrypt(encryptedPath string) ([]byte, error) {
+	out, err := exec.Command("age", "--decrypt", "--identity", k.Identity, encryptedPath).Output()
 	if err != nil {
 		return nil, fmt.Errorf("age decrypt with %s: %w", k.Name, err)
 	}
 	return out, nil
 }
 
-// AgeBlock renders the config template's encryption block from the registry:
-// identities are stat-filtered at init time, so a machine that only holds
-// some of the keys still decrypts everything those keys cover; encryption
-// (chezmoi add --encrypt) targets the default key's recipient.
-func AgeBlock(r Registry) string {
-	var quoted []string
-	for _, k := range r.Keys {
-		quoted = append(quoted, fmt.Sprintf("%q", k.Identity))
-	}
-	def, _ := r.DefaultKey()
-	var b strings.Builder
-	b.WriteString("encryption = \"age\"\n")
-	b.WriteString("[age]\n")
-	b.WriteString("{{- $ids := list }}\n")
-	fmt.Fprintf(&b, "{{- range list %s }}\n", strings.Join(quoted, " "))
-	b.WriteString("{{- $p := replace \"~\" $.chezmoi.homeDir . }}\n")
-	b.WriteString("{{- if stat $p }}{{ $ids = append $ids $p }}{{ end }}\n")
-	b.WriteString("{{- end }}\n")
-	b.WriteString("    identities = [{{ range $i, $p := $ids }}{{ if $i }}, {{ end }}{{ $p | quote }}{{ end }}]\n")
-	fmt.Fprintf(&b, "    recipient  = %q\n", def.Recipient)
-	return b.String()
-}
+// AgeBlock is the config template's encryption block. It is fully generic —
+// no key names, paths, or recipients ever enter the repo: identities glob the
+// keys directory at init time and the default recipient is derived from the
+// default key's file on the spot.
+const AgeBlock = `encryption = "age"
+[age]
+{{- $keydir := joinPath .chezmoi.homeDir ".config/casa/keys" }}
+{{- $keys := glob (joinPath $keydir "*.txt") }}
+    identities = [{{ range $i, $p := $keys }}{{ if $i }}, {{ end }}{{ $p | quote }}{{ end }}]
+{{- $def := "" }}
+{{- $marker := joinPath $keydir ".default" }}
+{{- if stat $marker }}{{ $def = joinPath $keydir (printf "%s.txt" (trim (output "cat" $marker))) }}{{ end }}
+{{- if and (or (not $def) (not (stat $def))) $keys }}{{ $def = index $keys 0 }}{{ end }}
+{{- if and $def (stat $def) (lookPath "age-keygen") }}
+    recipient  = {{ output "age-keygen" "-y" $def | trim | quote }}
+{{- end }}
+`
