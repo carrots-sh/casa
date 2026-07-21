@@ -1,9 +1,13 @@
 MODERNIZE := golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest
 
-.PHONY: build fmt modernize lint test e2e check
+.PHONY: build install fmt modernize lint test e2e check ship
 
 build:
 	go build -o casa ./cmd/casa
+
+# put the current tree on PATH for local testing (~/go/bin/casa)
+install:
+	go install ./cmd/casa
 
 fmt:
 	go fmt ./...
@@ -25,3 +29,6 @@ e2e:
 	./scripts/e2e.sh
 
 check: fmt lint test e2e
+
+# the release ritual: everything green, then installed for local testing
+ship: check install
