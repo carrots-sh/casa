@@ -82,7 +82,7 @@ extra_darwin = [
 
 // packagesScript pipes the manifest, rendered as a Brewfile, straight into
 // brew bundle — no Brewfile ever exists on disk.
-const packagesScript = `#!/bin/bash
+const PackagesScript = `#!/bin/bash
 # Managed by casa — installs everything declared in casa's package manifest.
 # Re-runs on ` + "`chezmoi apply`" + ` whenever the rendered package list below changes.
 # Removing a package from the manifest + apply → brew bundle cleanup uninstalls it.
@@ -132,7 +132,7 @@ exit "$status"
 
 // shToolsScript installs the [[packages.sh]] tools; command -v guards make
 // re-runs free and the whole script idempotent.
-const shToolsScript = `#!/bin/sh
+const ShToolsScript = `#!/bin/sh
 # Managed by casa — tools that ship their own installer, declared under
 # [[packages.sh]] in casa's package manifest. Re-runs on ` + "`chezmoi apply`" + `
 # when the list changes; the command -v guards keep re-runs free.
@@ -150,9 +150,9 @@ fi
 {{ end -}}
 `
 
-// Bootstrap creates the manifest and both run scripts in srcDir, skipping any
-// that already exist. manifestPath is the manifest's absolute path. It returns
-// the source-relative names of the files it created.
+// Bootstrap creates the manifest skeleton if missing and returns the created
+// source-relative names. The run scripts are NOT committed repo content —
+// casa generates them (gitignored) before every chezmoi call.
 func Bootstrap(srcDir, manifestPath string) ([]string, error) {
 	var created []string
 	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
@@ -166,18 +166,6 @@ func Bootstrap(srcDir, manifestPath string) ([]string, error) {
 			created = append(created, rel)
 		} else {
 			created = append(created, manifestPath)
-		}
-	}
-	for name, content := range map[string]string{
-		ScriptPackages: packagesScript,
-		ScriptShTools:  shToolsScript,
-	} {
-		p := filepath.Join(srcDir, name)
-		if _, err := os.Stat(p); os.IsNotExist(err) {
-			if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
-				return created, err
-			}
-			created = append(created, name)
 		}
 	}
 	return created, nil

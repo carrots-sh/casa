@@ -33,6 +33,7 @@ func ensurePkg() (manifest.Manifest, bool, error) {
 		return m, false, err
 	}
 	chez.EnsureMirrors(chez.SourceDir()) // .casadata needs its .chezmoidata symlink now
+	ensureGenerated(chez.SourceDir())    // run scripts materialize immediately (gitignored)
 	for _, f := range created {
 		fmt.Println("  + " + f)
 	}

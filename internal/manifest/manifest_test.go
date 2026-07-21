@@ -17,20 +17,16 @@ func fresh(t *testing.T) Manifest {
 	return Manifest{Path: p}
 }
 
-func TestBootstrapCreatesFilesOnce(t *testing.T) {
+func TestBootstrapCreatesManifestOnce(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, DefaultRel)
 	created, err := Bootstrap(dir, p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(created) != 3 {
-		t.Fatalf("want 3 created files, got %v", created)
-	}
-	for _, s := range []string{ScriptPackages, ScriptShTools} {
-		if _, err := os.Stat(filepath.Join(dir, s)); err != nil {
-			t.Fatalf("missing %s: %v", s, err)
-		}
+	// only the manifest: run scripts are casa-generated, never repo content
+	if len(created) != 1 || created[0] != DefaultRel {
+		t.Fatalf("want just the manifest, got %v", created)
 	}
 	again, err := Bootstrap(dir, p)
 	if err != nil || len(again) != 0 {

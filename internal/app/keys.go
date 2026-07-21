@@ -264,13 +264,7 @@ func backupKey(k agekey.Key) error {
 	if err != nil {
 		return err
 	}
-	script := filepath.Join(chez.SourceDir(), agekey.RestoreScript)
-	if _, err := os.Stat(script); os.IsNotExist(err) {
-		if err := os.WriteFile(script, []byte(agekey.RestoreScriptBody), 0o644); err != nil {
-			return err
-		}
-		fmt.Println("  + " + agekey.RestoreScript + " (restores backups on new machines)")
-	}
+	ensureGenerated(chez.SourceDir()) // materialize the restore script right away
 	fmt.Printf("✓ backed up %s → %s\n", k.Name, home.Tilde(out))
 	offerSave("casa: backup encryption key " + k.Name)
 	return nil

@@ -27,6 +27,13 @@ var mirrors = [][2]string{
 	{".casadata.json", ".chezmoidata.json"},
 }
 
+// prepare hooks run before every chezmoi invocation (after EnsureMirrors) —
+// e.g. the app layer regenerating casa-owned run scripts.
+var prepare []func(dir string)
+
+// OnPrepare registers a hook to run before each chezmoi call.
+func OnPrepare(f func(dir string)) { prepare = append(prepare, f) }
+
 // EnsureMirrors creates any missing chezmoi-named symlinks for casa-named
 // special files in dir, gitignoring the links it creates. Safe to call
 // repeatedly; a user's own real chezmoi-named file is never touched.
@@ -45,11 +52,11 @@ func EnsureMirrors(dir string) {
 			created = append(created, chz)
 		}
 	}
-	ensureGitignored(dir, created)
+	EnsureGitignored(dir, created)
 }
 
-// ensureGitignored appends any missing names to dir's .gitignore.
-func ensureGitignored(dir string, names []string) {
+// EnsureGitignored appends any missing names to dir's .gitignore.
+func EnsureGitignored(dir string, names []string) {
 	if len(names) == 0 {
 		return
 	}

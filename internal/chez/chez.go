@@ -83,6 +83,9 @@ func (cliExec) Out(args ...string) (string, error) {
 func cmd(args ...string) *exec.Cmd {
 	src := resolve()
 	EnsureMirrors(src) // self-heal before every chezmoi call (cheap: a few Lstats)
+	for _, f := range prepare {
+		f(src)
+	}
 	return exec.Command("chezmoi", append([]string{"--source", src}, args...)...)
 }
 
