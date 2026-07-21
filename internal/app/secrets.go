@@ -194,6 +194,33 @@ func displayNames(sources []string) ([]string, map[string]string) {
 	return disp, bySource
 }
 
+// RemoveSecret stops managing an encrypted file (the decrypted target stays
+// on disk) — untrack, scoped to secrets.
+func RemoveSecret() error {
+	if err := requireChezmoi(); err != nil {
+		return err
+	}
+	enc, err := chez.EncryptedSources()
+	if err != nil {
+		return err
+	}
+	if len(enc) == 0 {
+		fmt.Println("no secrets yet — add one with: casa secrets add <path>")
+		return nil
+	}
+	disp, _ := displayNames(enc)
+	sel, err := ui.Select("stop managing which secret? (the file stays on disk)", disp)
+	if err != nil || sel == "" {
+		return err
+	}
+	if err := chez.Forget(home.Expand(sel)); err != nil {
+		return err
+	}
+	fmt.Printf("✓ no longer managing %s (file kept)\n", sel)
+	offerSave("casa: remove secret")
+	return nil
+}
+
 // secretLines renders the encrypted files by their readable target paths.
 func secretLines() ([]string, error) {
 	enc, err := chez.EncryptedSources()

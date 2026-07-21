@@ -25,21 +25,22 @@ usage: casa [command]           (no command opens the interactive menu)
 shortcuts: casa edit [name] · casa save [msg] · casa sync · casa status
            casa upgrade         update casa itself to the latest release
 
-configs   edit [name]           pick and edit a config (encrypted ones handled transparently)
-          track [path]          start managing an existing file (plain, template, or encrypted)
+files     edit [name]           pick and edit a file (encrypted handled transparently)
+          add [path]            start managing an existing file (plain, template, or encrypted)
           storage [name]        change how a file is stored (template/encrypted/…)
-          untrack [path]        stop managing a file (keeps it on disk)
+          remove [path]         stop managing a file (keeps it on disk)
           list                  list managed files
 tools     add [manager] [name]  install a tool and record it in your manifest
           add sh                a tool that ships its own installer (curl | sh)
           add cmd ["command"]   paste any install command — casa detects the manager
-          rm                    uninstall tool(s) — pick across all managers
+          remove                uninstall tool(s) — pick across all managers
           update                upgrade outdated tools — one, many, or all
           list                  list recorded tools
           import                seed the manifest from what's installed here
           trust                 pick which taps update without prompting
 secrets   add [path]            encrypt and start managing a file
           edit [name]           pick a secret, decrypt, edit, re-encrypt
+          remove                stop managing a secret (keeps the file)
           keys                  encryption keys — create, default, delete, doppler
           list                  list encrypted files
 machine   setup [repo]          provision this machine from your dotfiles repo
@@ -93,13 +94,13 @@ func dispatch(args []string) error {
 		return app.Status()
 	case "upgrade":
 		return app.UpgradeSelf()
-	case "configs":
+	case "files", "configs": // configs: legacy alias
 		switch arg(args, 1) {
 		case "edit":
 			return app.EditConfig(arg(args, 2))
-		case "track":
+		case "add", "track": // track: legacy alias
 			return app.TrackFile(arg(args, 2))
-		case "untrack":
+		case "remove", "untrack": // untrack: legacy alias
 			return app.UntrackFile(arg(args, 2))
 		case "storage":
 			return app.ChangeStorage(arg(args, 2))
@@ -110,7 +111,7 @@ func dispatch(args []string) error {
 		switch arg(args, 1) {
 		case "add":
 			return app.AddTool(arg(args, 2), arg(args, 3))
-		case "rm":
+		case "remove", "rm": // rm: legacy alias
 			return app.RemoveTools()
 		case "update":
 			return app.UpdateTools()
@@ -127,6 +128,8 @@ func dispatch(args []string) error {
 			return app.AddSecret(arg(args, 2))
 		case "edit":
 			return app.EditSecret(arg(args, 2))
+		case "remove":
+			return app.RemoveSecret()
 		case "keys":
 			return app.Keys()
 		case "list":

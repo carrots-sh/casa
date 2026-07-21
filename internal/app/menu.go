@@ -52,46 +52,53 @@ func Menu() error {
 	for {
 		s := computeStatus()
 		sections := []section{
-			// action-first: the top-level question is "what do I want to do".
-			// edit and list are type-smart (encrypted files route automatically;
-			// list shows everything), so no action needs a second type pick.
-			{"act", []item{
-				{"edit", "any managed file — encrypted handled", "", func() error { return EditConfig("") }, false},
-				{"add", "install a tool (search or paste)", "", func() error { return AddTool("", "") }, false},
-				{"track", "start managing a file", "", func() error { return TrackFile("") }, false},
-				{"encrypt", "add an encrypted file", "", func() error { return AddSecret("") }, false},
-				{"save", "publish your changes", hint(s.toSave, "to save"), func() error { return Save("") }, false},
-				{"sync", "update this machine", hint(s.behind, "behind"), func() error { return Sync() }, false},
-			}},
-			{"see", []item{
-				{"list", "everything — files, tools, secrets", "", func() error {
-					files, err := configLines()
-					if err != nil {
-						return err
-					}
-					tools, _ := toolLines()
-					return page("everything managed", append(files, tools...), nil)
+			// noun clusters, one verb vocabulary: add/edit/remove/list mean the
+			// same thing in every cluster — no synonym verbs (track, encrypt,
+			// untrack are gone). Frequency order: daily verb first, list second,
+			// destructive last.
+			{"files", []item{
+				{"edit", "pick + edit a file — encrypted handled", "", func() error { return EditConfig("") }, false},
+				{"list", "managed files", "", func() error {
+					l, err := configLines()
+					return page("managed files", l, err)
 				}, true},
-				{"status", "full overview", "", func() error { return Status() }, false},
-				{"info", "machine + repo basics", "", func() error { return Info() }, false},
+				{"add", "start managing a file", "", func() error { return TrackFile("") }, false},
+				{"storage", "how a file is stored", "", func() error { return ChangeStorage("") }, false},
+				{"remove", "stop managing a file", "", func() error { return UntrackFile("") }, false},
 			}},
-			{"change", []item{
+			{"tools", []item{
+				{"add", "install a tool (search or paste)", "", func() error { return AddTool("", "") }, false},
+				{"list", "recorded tools", "", func() error {
+					l, err := toolLines()
+					return page("recorded tools", l, err)
+				}, true},
 				{"update", "upgrade outdated tools", hint(s.updates, "updates"), func() error { return UpdateTools() }, false},
 				{"import", "record what's installed here", hint(s.unrecorded, "to record"), func() error { return ImportTools() }, false},
-				{"storage", "how a file is stored", "", func() error { return ChangeStorage("") }, false},
-				{"answers", "your setup answers", "", func() error { return Answers("") }, false},
-				{"keys", "encryption keys", "", func() error { return Keys() }, false},
 				{"trust", "trusted taps", "", func() error { return TrustTaps() }, false},
-				{"question", "add a setup question", "", func() error { return AddQuestion() }, false},
-			}},
-			{"undo", []item{
-				{"untrack", "stop managing a file", "", func() error { return UntrackFile("") }, false},
 				{"remove", "uninstall tools", "", func() error { return RemoveTools() }, false},
-				{"undo", "revert the last save", "", func() error { return Undo() }, false},
 			}},
-			{"casa", []item{
+			{"secrets", []item{
+				{"edit", "edit an encrypted file", "", func() error { return EditSecret("") }, false},
+				{"list", "encrypted files", "", func() error {
+					l, err := secretLines()
+					return page("encrypted files", l, err)
+				}, true},
+				{"add", "encrypt + manage a file", "", func() error { return AddSecret("") }, false},
+				{"keys", "encryption keys", "", func() error { return Keys() }, false},
+				{"remove", "stop managing a secret", "", func() error { return RemoveSecret() }, false},
+			}},
+			{"machine", []item{
+				{"save", "publish your changes", hint(s.toSave, "to save"), func() error { return Save("") }, false},
+				{"sync", "update this machine", hint(s.behind, "behind"), func() error { return Sync() }, false},
+				{"status", "full overview", "", func() error { return Status() }, false},
+				{"answers", "your setup answers", "", func() error { return Answers("") }, false},
+				{"question", "add a setup question", "", func() error { return AddQuestion() }, false},
+				{"undo", "revert the last save", "", func() error { return Undo() }, false},
 				{"setup", "provision from a dotfiles repo", "", func() error { return Setup("") }, false},
 				{"doctor", "health check", "", func() error { return Doctor() }, false},
+				{"info", "machine + repo basics", "", func() error { return Info() }, false},
+			}},
+			{"casa", []item{
 				{"upgrade", "update casa itself", upgradeHint(s.upgrade), func() error { return UpgradeSelf() }, false},
 				{"quit", "", "", nil, false},
 			}},

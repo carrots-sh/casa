@@ -68,32 +68,36 @@ menu:
 ```
 casa · your-machine
 
-act       edit         · any managed file — encrypted handled
-          add          · install a tool (search or paste)
-          save         · publish your changes     (2 to save)
-          sync         · update this machine
-see       list         · everything — files, tools, secrets
-          status       · full overview
-change    update       · upgrade outdated tools   (3 updates)
+files     edit         · pick + edit a file — encrypted handled
+          list         · managed files
+          add          · start managing a file
+          storage      · how a file is stored
+          remove       · stop managing a file
+tools     add          · install a tool (search or paste)
+          list         · recorded tools
+          update       · upgrade outdated tools   (3 updates)
           import       · record what's installed here
-          keys         · encryption keys
-undo      untrack · remove · undo
-casa      setup · doctor · upgrade · quit
+secrets   edit · list · add · keys · remove
+machine   save         · publish your changes     (2 to save)
+          sync         · update this machine
+          status · answers · question · undo · setup · doctor · info
+casa      upgrade · quit
 ```
 
-The menu is action-first: the top-level question is *what do you want to do*.
-`edit` and `list` are type-smart — encrypted files route through the secret
-flow automatically, and `list` shows everything — so no action ever needs a
-second "which kind?" pick.
+One verb vocabulary everywhere: `add`, `edit`, `remove`, `list` mean the same
+thing in every cluster — no synonym verbs to learn (tracking a file is just
+`files add`). `edit` handles encrypted files transparently.
 
 Everything in the menu is also a typed command:
 
 ```
-casa tools    add [mgr] [name] | add sh | add cmd ["command"] | rm | update | list | import | trust
-casa configs  edit [name] | track [path] | storage [name] | untrack [path] | list
-casa secrets  add [path] | edit [name] | keys | list
+casa files    edit [name] | add [path] | storage [name] | remove [path] | list
+casa tools    add [mgr] [name] | add sh | add cmd ["command"] | remove | update | list | import | trust
+casa secrets  add [path] | edit [name] | remove | keys | list
 casa machine  setup [repo] | sync | save [msg] | status | answers [name] | question | doctor | info
 ```
+
+(`configs`/`track`/`untrack`/`rm` still work as legacy aliases.)
 
 ## Features
 

@@ -4,6 +4,16 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.8.0
+
+- Noun clusters with ONE verb vocabulary: files / tools / secrets / machine,
+  and add / edit / remove / list mean the same thing in every cluster — the
+  synonym verbs are gone (track → files add, untrack → files remove,
+  encrypt → secrets add). New: secrets remove. No "everything" views; each
+  cluster lists its own. edit still handles encrypted files transparently.
+  CLI: casa files … is the namespace (configs/track/untrack/rm remain
+  as legacy aliases); tools remove replaces tools rm.
+
 ## 0.7.0
 
 - The menu is action-first: clusters are act / see / change / undo / casa —

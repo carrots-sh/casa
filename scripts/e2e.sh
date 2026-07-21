@@ -309,11 +309,10 @@ casa tools list >/dev/null || fail "tools list"
 casa tools update | grep "nothing outdated" >/dev/null || fail "tools update (brew masked)"
 
 # ---- 13. menu opens and quits ---------------------------------------------------
-exp "menu — action-first, unified list pager, esc backs out" <<EOF
+exp "menu — noun clusters, unified verbs, list pager, esc backs out" <<EOF
 spawn casa
-must "any managed file"; must "install a tool"
-must "everything"
-sleep 0.3; send "everything"; sleep 0.4; send "\r"
+must "pick + edit a file"; must "install a tool"
+sleep 0.3; send "managed files"; sleep 0.4; send "\r"
 must "~/.testrc"
 sleep 0.3; send "\x1b"
 must "install a tool"
