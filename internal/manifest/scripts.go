@@ -54,6 +54,10 @@ uv = [
 npm = [
 ]
 
+# bun add -g
+bun = [
+]
+
 # cargo install
 cargo = [
 ]
@@ -113,6 +117,15 @@ printf '%s\n' "$brewfile" | brew bundle --file=-
 # Filter just that line; preserve the real exit status.
 out=$(printf '%s\n' "$brewfile" | brew bundle cleanup --force --file=- 2>&1) && status=0 || status=$?
 printf '%s\n' "$out" | grep -vF "invalid value '-'" || true
+
+# bun globals — brew bundle can't manage these. bun add -g is idempotent and
+# fast, so just re-assert the list. ponytail: no cleanup diffing; removing a
+# bun entry by hand needs a manual bun remove -g (casa's rm does it for you).
+{{ if index .packages "bun" -}}
+if command -v bun >/dev/null 2>&1; then
+{{ range index .packages "bun" }}  bun add -g "{{ . }}"
+{{ end }}fi
+{{ end -}}
 exit "$status"
 {{ end -}}
 `

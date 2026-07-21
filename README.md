@@ -99,8 +99,8 @@ on disk, and the repo keeps working without casa.
 First `casa tools add` on a repo without a manifest offers to set everything up:
 it creates the manifest + run scripts, then either **imports your existing
 Brewfile** (and retires it) or **scans this machine** (`brew`, `cask`, taps,
-`go`, `uv`, `npm`, `cargo`) so migration is one keypress. `casa tools import`
-re-scans any time.
+`go`, `uv`, `npm`, `bun`, `cargo`) so migration is one keypress. `casa tools
+import` re-scans any time and records anything you installed directly.
 
 Tools that ship their own installer (`curl … | sh`) are first-class: pick *sh*
 when adding, give it the one-liner and binary name, and every machine installs

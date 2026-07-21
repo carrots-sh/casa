@@ -30,7 +30,7 @@ const DefaultRel = ".casadata/packages.toml"
 const ChezmoiRel = ".chezmoidata/packages.toml"
 
 // Sections lists the string-list sections, in display order.
-var Sections = []string{"taps", "taps_trusted", "brew", "brew_darwin", "cask", "go", "uv", "npm", "cargo"}
+var Sections = []string{"taps", "taps_trusted", "brew", "brew_darwin", "cask", "go", "uv", "npm", "bun", "cargo"}
 
 // SectionFor maps a pm manager name to its manifest section.
 func SectionFor(mgr string) string {
@@ -79,6 +79,7 @@ type doc struct {
 		Go          []string `toml:"go"`
 		Uv          []string `toml:"uv"`
 		Npm         []string `toml:"npm"`
+		Bun         []string `toml:"bun"`
 		Cargo       []string `toml:"cargo"`
 		Sh          []ShTool `toml:"sh"`
 	} `toml:"packages"`
@@ -113,6 +114,8 @@ func (m Manifest) List(section string) ([]string, error) {
 		return d.Packages.Uv, nil
 	case "npm":
 		return d.Packages.Npm, nil
+	case "bun":
+		return d.Packages.Bun, nil
 	case "cargo":
 		return d.Packages.Cargo, nil
 	}

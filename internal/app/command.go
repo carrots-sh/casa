@@ -84,6 +84,11 @@ func parseInstallCommand(s string) (mgr, pkg string) {
 			(slices.Contains(f, "-g") || slices.Contains(f, "--global") || f[1] == "global") {
 			return "npm", arg(2)
 		}
+	case "bun":
+		if (f[1] == "add" || f[1] == "install" || f[1] == "i") &&
+			(slices.Contains(f, "-g") || slices.Contains(f, "--global")) {
+			return "bun", arg(2)
+		}
 	case "uv":
 		if len(f) >= 3 && f[1] == "tool" && f[2] == "install" {
 			return "uv", arg(3)

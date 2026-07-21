@@ -13,6 +13,9 @@ func TestParseInstallCommand(t *testing.T) {
 		{"sudo npm install --global tsx", "npm", "tsx"},
 		{"npm install typescript", "", ""}, // not global — not casa's business
 		{"uv tool install ruff", "uv", "ruff"},
+		{"bun add -g @anthropic-ai/claude-code", "bun", "@anthropic-ai/claude-code"},
+		{"bun install -g eslint", "bun", "eslint"},
+		{"bun add typescript", "", ""}, // not global
 		{"brew install jq", "brew", "jq"},
 		{"brew install --cask ghostty", "cask", "ghostty"},
 		{"brew tap carrots-sh/tap", "tap", "carrots-sh/tap"},

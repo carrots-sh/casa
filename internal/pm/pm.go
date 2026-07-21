@@ -34,7 +34,7 @@ type BulkUpgrader interface {
 }
 
 // Managers is the supported set, in display order.
-var Managers = []Manager{brew{}, cask{}, tap{}, golang{}, uvTool{}, npmPkg{}, cargo{}}
+var Managers = []Manager{brew{}, cask{}, tap{}, golang{}, uvTool{}, npmPkg{}, bunPkg{}, cargo{}}
 
 // ByName returns the manager with the given name.
 func ByName(name string) (Manager, bool) {
