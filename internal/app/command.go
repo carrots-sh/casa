@@ -50,8 +50,12 @@ func addCommand(cmd string) error {
 // mgr "sh" means a curl/wget installer (the whole command is the payload).
 func parseInstallCommand(s string) (mgr, pkg string) {
 	s = strings.TrimSpace(s)
+	// curl-style installers come in two shapes: piped (curl … | sh) and
+	// command-substituted (sh -c "$(curl …)"), possibly behind env prefixes.
 	if strings.HasPrefix(s, "curl ") || strings.HasPrefix(s, "wget ") ||
-		strings.Contains(s, "| sh") || strings.Contains(s, "| bash") {
+		strings.HasPrefix(s, "sh -c") || strings.HasPrefix(s, "bash -c") ||
+		strings.Contains(s, "| sh") || strings.Contains(s, "| bash") ||
+		strings.Contains(s, "$(curl ") || strings.Contains(s, "$(wget ") {
 		return "sh", ""
 	}
 	f := strings.Fields(s)

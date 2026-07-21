@@ -21,6 +21,8 @@ func TestParseInstallCommand(t *testing.T) {
 		{"brew tap carrots-sh/tap", "tap", "carrots-sh/tap"},
 		{"curl -fsSL https://herdr.dev/install.sh | sh", "sh", ""},
 		{"wget -qO- https://x.dev/i.sh | bash", "sh", ""},
+		{`sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"`, "sh", ""},
+		{`NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://brew.sh/install.sh)"`, "sh", ""},
 		{"pip install requests", "", ""},
 		{"make install", "", ""},
 		{"", "", ""},

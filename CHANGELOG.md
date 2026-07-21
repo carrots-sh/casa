@@ -4,6 +4,12 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.8.2
+
+- Paste detection recognizes command-substitution installers
+  (`sh -c "$(curl ...)"`, incl. env prefixes) — not just the piped
+  `curl ... | sh` shape.
+
 ## 0.8.1
 
 - The add search offers one escape row instead of two: "command · paste an
