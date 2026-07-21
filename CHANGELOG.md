@@ -4,6 +4,13 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.13.1
+
+- Generated run scripts renumbered contiguously now that repos need no
+  hand-written ones: `00-casa-keys` (before) → `10-packages` → `20-sh-tools`
+  (after). casa sweeps the old-numbered files and their gitignore entries
+  from existing repos automatically — nothing runs twice, nothing to do.
+
 ## 0.13.0
 
 - Repos need **zero hand-written run scripts** now:

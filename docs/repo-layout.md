@@ -29,8 +29,8 @@ automatically). casa pins every chezmoi call to this directory with
 ├── .chezmoi.toml.tmpl -> .casa.toml.tmpl      # generated: gitignored symlink
 ├── .chezmoiignore -> .casaignore              # generated: gitignored symlink
 ├── .chezmoidata -> .casadata                  # generated: gitignored symlink
-├── run_onchange_after_20-packages.sh.tmpl     # generated: gitignored run script
-├── run_onchange_after_30-sh-tools.sh.tmpl     # generated: gitignored run script
+├── run_onchange_after_10-packages.sh.tmpl     # generated: gitignored run script
+├── run_onchange_after_20-sh-tools.sh.tmpl     # generated: gitignored run script
 └── run_once_before_00-casa-keys.sh.tmpl       # generated: gitignored run script
 ```
 
@@ -101,8 +101,8 @@ last touched the repo.
 
 | Script | Generated when | Does |
 | --- | --- | --- |
-| `run_onchange_after_20-packages.sh.tmpl` | a package manifest exists | Renders the manifest into `brew bundle --file=-` (install and cleanup) on apply. |
-| `run_onchange_after_30-sh-tools.sh.tmpl` | a package manifest exists | Installs `[[packages.sh]]` tools behind `command -v` guards. |
+| `run_onchange_after_10-packages.sh.tmpl` | a package manifest exists | Renders the manifest into `brew bundle --file=-` (install and cleanup) on apply. |
+| `run_onchange_after_20-sh-tools.sh.tmpl` | a package manifest exists | Installs `[[packages.sh]]` tools behind `command -v` guards. |
 | `run_once_before_00-casa-keys.sh.tmpl` | `.casa/keys/` backups exist | Restores backed-up age keys into `~/.config/casa/keys` on a new machine, before anything needs decrypting. |
 
 These are also gitignored automatically. Deleting one is harmless; casa

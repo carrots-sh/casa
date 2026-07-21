@@ -30,8 +30,8 @@ var ShToolsScript string
 // run_onchange scripts: they re-run on apply whenever their rendered content
 // changes — i.e. whenever the relevant part of the manifest changes.
 const (
-	ScriptPackages = "run_onchange_after_20-packages.sh.tmpl"
-	ScriptShTools  = "run_onchange_after_30-sh-tools.sh.tmpl"
+	ScriptPackages = "run_onchange_after_10-packages.sh.tmpl"
+	ScriptShTools  = "run_onchange_after_20-sh-tools.sh.tmpl"
 )
 
 // Bootstrap creates the manifest skeleton if missing and returns the created

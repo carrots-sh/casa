@@ -17,10 +17,21 @@ func init() {
 	chez.OnPrepare(ensureGenerated)
 }
 
+// legacyGenerated are names older casa versions generated — swept from the
+// source dir and its .gitignore so renames never leave scripts running twice.
+var legacyGenerated = []string{
+	"run_onchange_after_20-packages.sh.tmpl", // ≤ v0.13.0 numbering
+	"run_onchange_after_30-sh-tools.sh.tmpl",
+}
+
 // ensureGenerated writes each generated script when its feature is in use
 // and the on-disk copy is missing or stale. Content is casa-versioned; the
 // files are gitignored so repos only carry data.
 func ensureGenerated(src string) {
+	for _, n := range legacyGenerated {
+		_ = os.Remove(filepath.Join(src, n))
+	}
+	chez.RemoveGitignored(src, legacyGenerated)
 	type gen struct {
 		name, body string
 		when       bool

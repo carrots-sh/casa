@@ -85,3 +85,29 @@ func EnsureGitignored(dir string, names []string) {
 	s += strings.Join(missing, "\n") + "\n"
 	_ = os.WriteFile(path, []byte(s), 0o644)
 }
+
+// RemoveGitignored drops exact-match lines from dir's .gitignore (no-op when
+// none are present) — cleanup for names casa no longer generates.
+func RemoveGitignored(dir string, names []string) {
+	path := filepath.Join(dir, ".gitignore")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	drop := map[string]bool{}
+	for _, n := range names {
+		drop[n] = true
+	}
+	var kept []string
+	changed := false
+	for l := range strings.SplitSeq(string(data), "\n") {
+		if drop[strings.TrimSpace(l)] {
+			changed = true
+			continue
+		}
+		kept = append(kept, l)
+	}
+	if changed {
+		_ = os.WriteFile(path, []byte(strings.Join(kept, "\n")), 0o644)
+	}
+}

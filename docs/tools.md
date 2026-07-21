@@ -140,8 +140,8 @@ The manifest is data, not a script. Before every chezmoi call, casa generates
 two `run_onchange` scripts in the source directory — gitignored, never
 committed — from templates embedded in the installed casa binary:
 
-- `run_onchange_after_20-packages.sh.tmpl` — everything brew bundle can manage
-- `run_onchange_after_30-sh-tools.sh.tmpl` — the `[[packages.sh]]` tools
+- `run_onchange_after_10-packages.sh.tmpl` — everything brew bundle can manage
+- `run_onchange_after_20-sh-tools.sh.tmpl` — the `[[packages.sh]]` tools
 
 Because they are `run_onchange` scripts, they re-run on apply exactly when the
 rendered package list changes; because they are regenerated rather than
