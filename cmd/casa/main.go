@@ -27,6 +27,7 @@ shortcuts: casa edit [name] · casa save [msg] · casa sync · casa status
 
 files     edit [name]           pick and edit a file (encrypted handled transparently)
           add [path]            start managing an existing file (plain, template, or encrypted)
+          drift                 review files changed outside casa — diff, keep, or restore
           storage [name]        change how a file is stored (template/encrypted/…)
           remove [path]         stop managing a file (keeps it on disk)
           list                  list managed files
@@ -102,6 +103,8 @@ func dispatch(args []string) error {
 			return app.TrackFile(arg(args, 2))
 		case "remove", "untrack": // untrack: legacy alias
 			return app.UntrackFile(arg(args, 2))
+		case "drift":
+			return app.Drift()
 		case "storage":
 			return app.ChangeStorage(arg(args, 2))
 		case "list":

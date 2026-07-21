@@ -309,6 +309,22 @@ casa tools list >/dev/null || fail "tools list"
 casa tools update | grep "nothing outdated" >/dev/null || fail "tools update (brew masked)"
 
 # ---- 13. menu opens and quits ---------------------------------------------------
+# drift: change a managed target outside casa, review the diff, keep local
+printf 'locally changed\n' >> "$HOME/.plainrc"
+exp "files drift — diff in pager, keep local records it" <<EOF
+spawn casa files drift
+must "plainrc"
+sleep 0.3; send "\r"
+must "locally changed"
+sleep 0.3; send "\r"
+must "keep my local version"
+sleep 0.3; send "\r"
+must "recorded your local"
+must "saved + pushed"
+must "nothing drifted"
+EOF
+grep -q "locally changed" "$CASA_SOURCE/dot_plainrc" || fail "drift keep did not record local version"
+
 exp "menu — noun clusters, unified verbs, list pager, esc backs out" <<EOF
 spawn casa
 must "pick + edit a file"; must "install a tool"

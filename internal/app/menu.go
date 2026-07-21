@@ -64,6 +64,7 @@ func Menu() error {
 				}, true},
 				{"add", "start managing a file", "", func() error { return TrackFile("") }, false},
 				{"storage", "how a file is stored", "", func() error { return ChangeStorage("") }, false},
+				{"drift", "review files changed outside casa", hint(s.drift, "drifted"), func() error { return Drift() }, false},
 				{"remove", "stop managing a file", "", func() error { return UntrackFile("") }, false},
 			}},
 			{"tools", []item{
