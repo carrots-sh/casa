@@ -81,6 +81,8 @@ type doc struct {
 		Npm         []string `toml:"npm"`
 		Bun         []string `toml:"bun"`
 		Cargo       []string `toml:"cargo"`
+		Extra       []string `toml:"extra"`
+		ExtraDarwin []string `toml:"extra_darwin"`
 		Sh          []ShTool `toml:"sh"`
 	} `toml:"packages"`
 }
@@ -118,6 +120,10 @@ func (m Manifest) List(section string) ([]string, error) {
 		return d.Packages.Bun, nil
 	case "cargo":
 		return d.Packages.Cargo, nil
+	case "extra":
+		return d.Packages.Extra, nil
+	case "extra_darwin":
+		return d.Packages.ExtraDarwin, nil
 	}
 	return nil, fmt.Errorf("unknown manifest section %q", section)
 }

@@ -6,6 +6,7 @@ package app
 import (
 	"fmt"
 	"os/exec"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -153,14 +154,34 @@ func unrecordedPairs(m manifest.Manifest) []pm.Result {
 	return out
 }
 
+// extraDirective pulls the directive and package name out of a raw
+// extra/extra_darwin Brewfile line ('brew "ruby", link: false' → brew, ruby).
+var extraDirective = regexp.MustCompile(`^(tap|brew|cask|go|uv|npm|bun|cargo) "([^"]+)"`)
+
 // recordedSections returns everything recorded that installs via the same
-// manager as section (brew covers brew_darwin; tap covers taps_trusted).
+// manager as section — including brew_darwin/taps_trusted siblings AND the
+// raw extra/extra_darwin lines, so hand-managed entries never show as drift
+// (a duplicate plain entry can break brew bundle, e.g. link: false vs link).
 func recordedSections(m manifest.Manifest, section string) []string {
+	mgr := manifest.ManagerFor(section)
 	var out []string
 	for _, s := range manifest.Sections {
-		if manifest.ManagerFor(s) == manifest.ManagerFor(section) {
+		if manifest.ManagerFor(s) == mgr {
 			names, _ := m.List(s)
 			out = append(out, names...)
+		}
+	}
+	for _, s := range []string{"extra", "extra_darwin"} {
+		lines, _ := m.List(s)
+		for _, l := range lines {
+			if mm := extraDirective.FindStringSubmatch(strings.TrimSpace(l)); mm != nil && manifest.ManagerFor(manifest.SectionFor(mm[1])) == mgr {
+				name := mm[2]
+				out = append(out, name)
+				// tapped-formula paths also install under their short name
+				if i := strings.LastIndex(name, "/"); i >= 0 {
+					out = append(out, name[i+1:])
+				}
+			}
 		}
 	}
 	return out
