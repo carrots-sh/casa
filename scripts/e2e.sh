@@ -29,6 +29,7 @@ unset VISUAL GIT_EDITOR 2>/dev/null || true # would outrank $EDITOR in chezmoi/g
 export TERM=xterm-256color
 # ponytail: brew intentionally NOT on PATH so tools/sync never touch real packages
 export PATH="$SB/bin:/usr/bin:/bin"
+export CASA_PLAIN_PATH=1 # keep the mask: casa must not re-add real manager dirs
 export GIT_CONFIG_GLOBAL="$SB/gitconfig"
 git config --file "$GIT_CONFIG_GLOBAL" user.email e2e@casa.test
 git config --file "$GIT_CONFIG_GLOBAL" user.name "casa e2e"

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/carrots-sh/casa/internal/app"
+	"github.com/carrots-sh/casa/internal/pm"
 )
 
 // Set via ldflags during a goreleaser build; filled from build info for `go install`.
@@ -55,6 +56,7 @@ help, version                   this text / version info
 
 func main() {
 	fillFromBuildInfo()
+	pm.EnsurePath() // well-known manager bin dirs (go/cargo/bun/brew/…) resolve even under a minimal PATH
 	app.Version = version
 	if err := dispatch(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "✗", err)

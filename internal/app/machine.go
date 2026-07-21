@@ -238,14 +238,6 @@ func Undo() error {
 	return chez.Apply()
 }
 
-// Doctor runs chezmoi's health check.
-func Doctor() error {
-	if err := requireChezmoi(); err != nil {
-		return err
-	}
-	return chez.Doctor()
-}
-
 // Info prints machine + repo basics.
 func Info() error {
 	if err := requireChezmoi(); err != nil {
