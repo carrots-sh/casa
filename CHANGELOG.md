@@ -4,6 +4,12 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.5.5
+
+- Long action output (e.g. tools list) no longer renders duplicated leading
+  chunks in some terminals: casa resets synchronized-output mode and the
+  scroll region before printing, in case the TUI left them dangling.
+
 ## 0.5.4
 
 - The "enter to go back" pause no longer echoes stray input: raw mode, only

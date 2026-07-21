@@ -120,9 +120,13 @@ func Menu() error {
 
 // clearScreen wipes the visible screen so each menu/action starts on a clean
 // page instead of piling frames up. Scrollback from before casa started is
-// left alone.
+// left alone. It also resets terminal state the TUI stack may leave behind —
+// a dangling synchronized-output mode or scroll region makes some terminals
+// repaint scrolled output as duplicated chunks.
 func clearScreen() {
-	fmt.Print("\033[H\033[2J")
+	fmt.Print("\033[?2026l" + // end synchronized output, if stuck
+		"\033[r" + // reset any scroll region to full screen
+		"\033[H\033[2J")
 }
 
 // pause holds the action's output on screen until the user is done reading.
