@@ -2,11 +2,7 @@ package app
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
-	"regexp"
-	"slices"
-	"sort"
 	"strings"
 
 	"github.com/carrots-sh/casa/internal/manifest"
@@ -102,73 +98,6 @@ func searchPick(mgr string) (string, string, error) {
 	return r.Mgr, r.Name, nil
 }
 
-// binGuess pulls a likely binary name out of an installer URL (herdr.dev → herdr).
-var binGuess = regexp.MustCompile(`https?://(?:www\.)?([a-z0-9-]+)\.`)
-
-// addShTool records a tool that ships its own installer: run the one-liner
-// once, then declare it in [[packages.sh]] so every machine gets it on apply.
-func addShTool(bin string) error {
-	install, err := ui.Input("install command (e.g. curl -fsSL https://herdr.dev/install.sh | sh)")
-	if err != nil || install == "" {
-		return err
-	}
-	if bin == "" {
-		guess := ""
-		if mm := binGuess.FindStringSubmatch(install); mm != nil {
-			guess = mm[1]
-		}
-		prompt := "binary name (how casa detects it's installed)"
-		if guess != "" {
-			prompt += " [" + guess + "]"
-		}
-		if bin, err = ui.Input(prompt); err != nil {
-			return err
-		}
-		if bin == "" {
-			bin = guess
-		}
-		if bin == "" {
-			return fmt.Errorf("a binary name is required")
-		}
-	}
-	update, err := ui.Input("self-update command (leave empty if it updates itself)")
-	if err != nil {
-		return err
-	}
-	osChoice, err := ui.Select("runs on", []string{"all platforms", "darwin (macOS only)", "linux only"})
-	if err != nil || osChoice == "" {
-		return err
-	}
-	osTag := ""
-	if f := strings.Fields(osChoice)[0]; f == "darwin" || f == "linux" {
-		osTag = f
-	}
-	if _, err := exec.LookPath(bin); err == nil {
-		fmt.Printf("%s is already installed — recording it without re-running the installer.\n", bin)
-	} else {
-		ok, err := ui.Confirm("run now:  " + install)
-		if err != nil || !ok {
-			return err
-		}
-		if err := runShell("sh", "-c", install); err != nil {
-			return fmt.Errorf("installer failed: %w", err)
-		}
-		if _, err := exec.LookPath(bin); err != nil {
-			fmt.Printf("note: %q isn't on PATH after the install — check the binary name (still recording).\n", bin)
-		}
-	}
-	m, ok, err := ensurePkg()
-	if err != nil || !ok {
-		return err
-	}
-	if err := m.AddSh(manifest.ShTool{Bin: bin, Install: install, Update: update, OS: osTag}); err != nil {
-		return err
-	}
-	fmt.Printf("✓ installed and recorded: sh %q\n", bin)
-	offerSave("casa: add sh " + bin)
-	return nil
-}
-
 type tool struct{ section, name string }
 
 // toolRows builds the flat "everything recorded" list: pm sections first,
@@ -224,78 +153,6 @@ func RemoveTools() error {
 	}
 	fmt.Println("✓ removed")
 	offerSave("casa: remove tools")
-	return nil
-}
-
-// removeShTool drops the manifest block and offers to delete the binary the
-// installer left behind (casa never deletes it silently — it didn't put it there).
-func removeShTool(m manifest.Manifest, bin string) {
-	_ = m.RemoveSh(bin)
-	path, err := exec.LookPath(bin)
-	if err != nil {
-		return
-	}
-	ok, _ := ui.Confirm("also delete the binary at " + path + "?")
-	if !ok {
-		fmt.Println("  left in place: " + path)
-		return
-	}
-	if err := os.Remove(path); err != nil {
-		fmt.Printf("  (couldn't delete %s: %v)\n", path, err)
-		return
-	}
-	fmt.Println("  deleted " + path + "  (any ~/." + bin + "-style data dirs are yours to clean)")
-}
-
-// TrustTaps picks which taps brew bundle may manage without prompting —
-// trusted taps render as `tap "…", trusted: true`, so their formulae stop
-// producing "tap formula is not trusted" warnings on install/cleanup.
-func TrustTaps() error {
-	m := mf()
-	if !m.Configured() {
-		fmt.Println("no manifest yet — try: casa tools add")
-		return nil
-	}
-	plain, _ := m.List("taps")
-	trusted, _ := m.List("taps_trusted")
-	all := append(append([]string{}, plain...), trusted...)
-	if len(all) == 0 {
-		fmt.Println("no taps recorded yet")
-		return nil
-	}
-	sort.Strings(all)
-	want, err := ui.MultiSelect("which taps are trusted? (their formulae update without prompting)", all, trusted...)
-	if err != nil {
-		return err
-	}
-	wantSet := map[string]bool{}
-	for _, t := range want {
-		wantSet[t] = true
-	}
-	changed := 0
-	for _, t := range all {
-		was := slices.Contains(trusted, t)
-		switch {
-		case wantSet[t] && !was:
-			_ = m.Remove("taps", t)
-			if err := m.Add("taps_trusted", t); err != nil {
-				return err
-			}
-			changed++
-		case !wantSet[t] && was:
-			_ = m.Remove("taps_trusted", t)
-			if err := m.Add("taps", t); err != nil {
-				return err
-			}
-			changed++
-		}
-	}
-	if changed == 0 {
-		fmt.Println("nothing to change.")
-		return nil
-	}
-	fmt.Printf("✓ trusted taps: %s\n", strings.Join(want, ", "))
-	offerSave("casa: update trusted taps")
 	return nil
 }
 
