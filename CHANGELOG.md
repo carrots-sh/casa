@@ -4,6 +4,13 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.10.1
+
+- Status and the drift flow agree: "local drift" counts only reviewable
+  files (what `files drift` shows); pending run scripts get their own
+  status line and a note in the drift screen — they just run on the next
+  sync, nothing to keep or restore.
+
 ## 0.10.0
 
 - **fzf-style multiselects**: in remove, update, import, trust, and every

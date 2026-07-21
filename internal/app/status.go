@@ -102,11 +102,17 @@ func computeStatus() statusInfo {
 	return s
 }
 
-// driftCount is the chezmoi status (managed files needing apply). Used only by
-// the full `status` command, not the menu, since it's comparatively slow.
+// driftCount is the number of managed files whose on-disk state differs —
+// the same set `files drift` reviews. Pending run scripts don't count.
 func driftCount() int {
-	st, _ := chez.Status()
-	return len(st)
+	files, _, _ := driftedTargets()
+	return len(files)
+}
+
+// pendingScripts is how many run scripts would fire on the next apply.
+func pendingScripts() int {
+	_, scripts, _ := driftedTargets()
+	return scripts
 }
 
 // outdatedCount returns the package-update count, computing synchronously if the

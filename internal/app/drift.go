@@ -10,21 +10,25 @@ import (
 	"github.com/carrots-sh/casa/internal/ui"
 )
 
-// driftedTargets parses `chezmoi status` into home-relative target paths.
-// Pending run scripts ('R' status) are not file drift — they re-run on the
-// next apply and have nothing to keep or restore.
-func driftedTargets() ([]string, error) {
+// driftedTargets parses `chezmoi status` into home-relative file targets and
+// the count of pending run scripts ('R' rows) — scripts are not file drift:
+// they simply run on the next apply, nothing to keep or restore.
+func driftedTargets() (files []string, scripts int, err error) {
 	lines, err := chez.Status()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	var out []string
 	for _, l := range lines {
-		if len(l) > 3 && l[0] != 'R' && l[1] != 'R' {
-			out = append(out, l[3:])
+		if len(l) <= 3 {
+			continue
 		}
+		if l[0] == 'R' || l[1] == 'R' {
+			scripts++
+			continue
+		}
+		files = append(files, l[3:])
 	}
-	return out, nil
+	return files, scripts, nil
 }
 
 // Drift walks the drifted files one at a time: diff first, then choose.
@@ -33,12 +37,15 @@ func Drift() error {
 		return err
 	}
 	for {
-		targets, err := driftedTargets()
+		targets, scripts, err := driftedTargets()
 		if err != nil {
 			return err
 		}
 		if len(targets) == 0 {
 			fmt.Println("✓ nothing drifted — this machine matches the repo")
+			if scripts > 0 {
+				fmt.Printf("  (%d run script(s) pending — they run on the next casa sync)\n", scripts)
+			}
 			return nil
 		}
 		labels := make([]string, len(targets))

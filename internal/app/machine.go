@@ -230,7 +230,10 @@ func Status() error {
 	fmt.Printf("machine:           %s\n", s.machine)
 	fmt.Printf("unsaved changes:   %d\n", s.toSave)
 	fmt.Printf("behind your repo:  %d commit(s)\n", s.behind)
-	fmt.Printf("local drift:       %d file(s) need apply\n", driftCount())
+	fmt.Printf("local drift:       %d file(s) to review (casa files drift)\n", driftCount())
+	if n := pendingScripts(); n > 0 {
+		fmt.Printf("pending scripts:   %d (run on the next casa sync)\n", n)
+	}
 	fmt.Printf("outdated tools:    %d\n", outdatedCount())
 	return nil
 }
