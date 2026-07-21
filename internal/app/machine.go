@@ -9,6 +9,7 @@ import (
 
 	"github.com/carrots-sh/casa/internal/chez"
 	"github.com/carrots-sh/casa/internal/config"
+	"github.com/carrots-sh/casa/internal/pm"
 	"github.com/carrots-sh/casa/internal/ui"
 )
 
@@ -54,9 +55,38 @@ func Setup(arg string) error {
 	if err := askSetupQuestions(); err != nil {
 		return err
 	}
+	if err := offerBrew(); err != nil {
+		return err
+	}
 	fmt.Println("applying your dotfiles...")
 	invalidateStatus()
 	return chez.Apply()
+}
+
+// offerBrew installs Homebrew on a fresh machine (with consent) so the
+// packages script has something to run — declining is fine, packages just
+// skip until brew shows up.
+func offerBrew() error {
+	if _, err := exec.LookPath("brew"); err == nil {
+		return nil
+	}
+	ok, err := ui.ConfirmDefault("Homebrew isn't installed — install it now? (your packages need it)", true)
+	if err != nil || !ok {
+		if err == nil {
+			fmt.Println("skipping — packages won't install until brew exists (casa machine doctor shows how)")
+		}
+		return err
+	}
+	fmt.Println("installing Homebrew...")
+	if err := runShell("/bin/bash", "-c",
+		`NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`); err != nil {
+		return fmt.Errorf("homebrew install failed: %w", err)
+	}
+	pm.EnsurePath() // pick up /opt/homebrew/bin or linuxbrew immediately
+	if _, err := exec.LookPath("brew"); err != nil {
+		fmt.Println("note: brew installed but not on PATH yet — restart your shell after setup")
+	}
+	return nil
 }
 
 // pickRepoURL resolves arg to a reachable clone URL, preferring SSH then HTTPS.

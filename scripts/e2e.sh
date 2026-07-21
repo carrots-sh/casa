@@ -102,6 +102,7 @@ must "Email";         hit "\r"
 must "Work machine";  hit "\r"
 must "Host type";     hit "\r"
 must "Features";      hit " "; hit "\r"
+must "Homebrew";      hit "n"
 must "applying your dotfiles"
 EOF
 grep -q "hello e2e" "$HOME/.testrc" || fail "setup did not apply .testrc"
@@ -189,6 +190,30 @@ age --decrypt --identity "$HOME/.config/casa/keys/main.txt" \
 chezmoi --source "$CASA_SOURCE" cat "$HOME/.vault.token" | grep -q vault-secret \
   || fail "vault-encrypted file not decryptable via config identities"
 
+exp "keys — backup to repo with passphrase" <<EOF
+spawn casa secrets keys
+must "generate in"
+sleep 0.3; send "vault"; sleep 0.3; send "\r"
+must "backup to repo"
+sleep 0.3; send "backup"; sleep 0.3; send "\r"
+must "passphrase"
+sleep 0.5; send "e2e-pass\r"
+sleep 0.5; send "e2e-pass\r"
+must "backed up vault"
+must "saved + pushed"
+must "generate in"
+sleep 0.3; send "\x1b"
+EOF
+[ -f "$CASA_SOURCE/.casa/keys/vault.key.age" ] || fail "backup file missing"
+[ -f "$CASA_SOURCE/run_once_before_00-casa-keys.sh.tmpl" ] || fail "restore script missing"
+CASA_KEY_RESTORED="$SB/restored.txt"
+expect -c "set timeout 20
+spawn age --decrypt -o $CASA_KEY_RESTORED $CASA_SOURCE/.casa/keys/vault.key.age
+expect \"passphrase\"
+sleep 0.3; send \"e2e-pass\r\"
+expect eof" >/dev/null 2>&1
+cmp -s "$CASA_KEY_RESTORED" "$HOME/.config/casa/keys/vault.txt" || fail "backup does not round-trip"
+
 exp "keys — delete vault, orphan re-encrypted with main" <<EOF
 spawn casa secrets keys
 must "generate in"
@@ -206,6 +231,7 @@ must "generate in"
 sleep 0.3; send "\x1b"
 EOF
 [ ! -f "$HOME/.config/casa/keys/vault.txt" ] || fail "vault key file still present"
+[ ! -f "$CASA_SOURCE/.casa/keys/vault.key.age" ] || fail "dead key backup still in repo"
 chezmoi --source "$CASA_SOURCE" cat "$HOME/.vault.token" | grep -q vault-secret \
   || fail "orphan not readable after re-encrypt with main"
 

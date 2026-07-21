@@ -163,6 +163,55 @@ func (k Key) Decrypt(encryptedPath string) ([]byte, error) {
 	return out, nil
 }
 
+// BackupRel is where passphrase-encrypted key backups live in the repo,
+// relative to the source dir. The leading dot keeps chezmoi from ever
+// treating them as targets.
+const BackupRel = ".casa/keys"
+
+// RestoreScript is the run_once script casa generates alongside the first
+// backup: on a new machine it restores every backed-up key into the keys dir
+// (passphrase prompt per key), before chezmoi needs them to decrypt anything.
+const RestoreScript = "run_once_before_00-casa-keys.sh.tmpl"
+
+// RestoreScriptBody is fully generic — it globs the backups at run time, so
+// no key names live in the repo.
+const RestoreScriptBody = `#!/bin/sh
+# Managed by casa — restore passphrase-encrypted age key backups (.casa/keys)
+# into ~/.config/casa/keys on a new machine, before anything needs decrypting.
+set -e
+KEYDIR="$HOME/.config/casa/keys"
+SRC="{{ .chezmoi.sourceDir }}/.casa/keys"
+[ -d "$SRC" ] || exit 0
+if ! command -v age >/dev/null 2>&1; then
+  echo "WARNING: age not installed yet — restore keys later via: casa secrets keys" >&2
+  exit 0
+fi
+mkdir -p "$KEYDIR" && chmod 700 "$KEYDIR"
+for f in "$SRC"/*.key.age; do
+  [ -e "$f" ] || exit 0
+  name="$(basename "$f" .key.age)"
+  [ -f "$KEYDIR/$name.txt" ] && continue
+  echo "Restoring age key '$name' (enter its passphrase):"
+  age --decrypt -o "$KEYDIR/$name.txt" "$f"
+  chmod 600 "$KEYDIR/$name.txt"
+done
+`
+
+// Backup passphrase-encrypts the key's identity into dir (age prompts for
+// the passphrase on the terminal).
+func (k Key) Backup(dir string) (string, error) {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	out := filepath.Join(dir, k.Name+".key.age")
+	c := exec.Command("age", "--encrypt", "--passphrase", "-o", out, k.Identity)
+	c.Stdin, c.Stdout, c.Stderr = os.Stdin, os.Stdout, os.Stderr
+	if err := c.Run(); err != nil {
+		return "", fmt.Errorf("age --passphrase: %w", err)
+	}
+	return out, nil
+}
+
 // AgeBlock is the config template's encryption block. It is fully generic —
 // no key names, paths, or recipients ever enter the repo: identities glob the
 // keys directory at init time and the default recipient is derived from the

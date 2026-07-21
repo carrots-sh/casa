@@ -224,7 +224,7 @@ func createKey() error {
 }
 
 func keyActions(k agekey.Key) error {
-	acts := []string{"make default", "delete"}
+	acts := []string{"make default", "backup to repo (passphrase)", "delete"}
 	if _, err := exec.LookPath("doppler"); err == nil {
 		acts = append(acts, "push to doppler", "pull from doppler")
 	}
@@ -234,6 +234,8 @@ func keyActions(k agekey.Key) error {
 		return err
 	}
 	switch sel {
+	case "backup to repo (passphrase)":
+		return backupKey(k)
 	case "make default":
 		if err := agekey.SetDefault(k.Name); err != nil {
 			return err
@@ -250,6 +252,27 @@ func keyActions(k agekey.Key) error {
 	case "pull from doppler":
 		return dopplerKey(k.Name, false)
 	}
+	return nil
+}
+
+// backupKey passphrase-encrypts the private identity into the repo
+// (.casa/keys/<name>.key.age — safe to commit) and generates the restore
+// script that decrypts backups on a new machine before anything needs them.
+func backupKey(k agekey.Key) error {
+	fmt.Println("choose a passphrase — a new machine needs it (plus the repo) to restore this key.")
+	out, err := k.Backup(filepath.Join(chez.SourceDir(), agekey.BackupRel))
+	if err != nil {
+		return err
+	}
+	script := filepath.Join(chez.SourceDir(), agekey.RestoreScript)
+	if _, err := os.Stat(script); os.IsNotExist(err) {
+		if err := os.WriteFile(script, []byte(agekey.RestoreScriptBody), 0o644); err != nil {
+			return err
+		}
+		fmt.Println("  + " + agekey.RestoreScript + " (restores backups on new machines)")
+	}
+	fmt.Printf("✓ backed up %s → %s\n", k.Name, home.Tilde(out))
+	offerSave("casa: backup encryption key " + k.Name)
 	return nil
 }
 
@@ -304,6 +327,10 @@ func deleteKey(k agekey.Key) error {
 	}
 	if err := os.Remove(k.Identity); err != nil {
 		return err
+	}
+	backup := filepath.Join(chez.SourceDir(), agekey.BackupRel, k.Name+".key.age")
+	if err := os.Remove(backup); err == nil {
+		fmt.Println("  - removed its repo backup (a new machine must never try to restore a dead key)")
 	}
 	if def, _ := agekey.Default(); def.Name != k.Name {
 		_ = agekey.SetDefault(def.Name) // refresh marker if it pointed at the deleted key
