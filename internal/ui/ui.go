@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"charm.land/bubbles/v2/key"
@@ -16,29 +15,68 @@ import (
 // errCancel is the sentinel run reports when the user presses esc.
 var errCancel = errors.New("cancelled")
 
-// run executes a form. Esc cancels the current prompt (a soft back: callers
-// treat the returned zero value as cancel); ctrl+c quits casa entirely from
-// anywhere. Both keys abort the form the same way in huh, so we bind esc to
-// Quit alongside ctrl+c and use a message filter to remember which one fired.
-func run(f *huh.Form) error {
-	esc := false
-	km := huh.NewDefaultKeyMap()
-	km.Quit = key.NewBinding(key.WithKeys("ctrl+c", "esc"))
+// run executes a form. Esc (and, on list fields, ←) cancels the current
+// prompt (a soft back: callers treat the returned zero value as cancel);
+// ctrl+c quits casa entirely from anywhere. All abort the form the same way
+// in huh, so they share the Quit binding and a message filter remembers
+// whether it was a soft back or a hard quit.
+//
+// Controls are kept consistent across every prompt: tab selects (toggles a
+// row, accepts a completion), enter submits, esc/← goes back.
+func run(f *huh.Form, list bool) error {
+	back := false
+	km := keymap(list)
 	err := f.WithKeyMap(km).
 		WithProgramOptions(tea.WithFilter(func(_ tea.Model, msg tea.Msg) tea.Msg {
 			if k, ok := msg.(tea.KeyPressMsg); ok {
-				esc = k.String() == "esc"
+				s := k.String()
+				back = s == "esc" || s == "left"
 			}
 			return msg
 		})).
 		Run()
 	if errors.Is(err, huh.ErrUserAborted) {
-		if esc {
+		if back {
 			return errCancel
 		}
 		os.Exit(0)
 	}
 	return err
+}
+
+// keymap is huh's default keymap bent to casa's consistent scheme. list forms
+// (select/multiselect) also take ← as back; text forms keep ← for the cursor.
+func keymap(list bool) *huh.KeyMap {
+	km := huh.NewDefaultKeyMap()
+	quitKeys := []string{"ctrl+c", "esc"}
+	if list {
+		quitKeys = append(quitKeys, "left")
+	}
+	km.Quit = key.NewBinding(key.WithKeys(quitKeys...))
+
+	// single-field forms: shift+tab "back" (previous field) is meaningless noise
+	km.Select.Prev.SetEnabled(false)
+	km.MultiSelect.Prev.SetEnabled(false)
+	km.Input.Prev.SetEnabled(false)
+	km.Confirm.Prev.SetEnabled(false)
+
+	// select: enter picks the highlighted row; help carrier for esc/← back
+	km.Select.Next = key.NewBinding(key.WithKeys("enter", "tab"), key.WithHelp("enter", "select"))
+	km.Select.Submit = key.NewBinding(key.WithKeys("enter"), key.WithHelp("esc/←", "back"))
+
+	// multiselect: tab toggles (space/x still work), enter submits
+	km.MultiSelect.Toggle = key.NewBinding(key.WithKeys("tab", "space", "x"), key.WithHelp("tab", "select"))
+	km.MultiSelect.Next = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "submit"))
+	km.MultiSelect.Submit = key.NewBinding(key.WithKeys("enter"), key.WithHelp("esc/←", "back"))
+
+	// input: free tab for completion (huh's default tab=next shadows it)
+	km.Input.Next = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "submit"))
+	km.Input.AcceptSuggestion = key.NewBinding(key.WithKeys("tab", "right", "ctrl+e"), key.WithHelp("tab", "complete"))
+
+	// confirm: tab toggles like in lists
+	km.Confirm.Toggle = key.NewBinding(key.WithKeys("tab", "h", "l", "right", "left"), key.WithHelp("tab/←/→", "toggle"))
+	km.Confirm.Next = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "submit"))
+	return km
 }
 
 // theme keeps charm's accent for the selected item but renders every other
@@ -90,7 +128,7 @@ func SelectDefault(title string, opts []string, def string) (string, error) {
 			Height(height(len(opts))).
 			Filtering(true).
 			Value(&v),
-	)).WithTheme(theme()))
+	)).WithTheme(theme()), true)
 	if errors.Is(err, errCancel) {
 		return "", nil
 	}
@@ -107,7 +145,7 @@ func MultiSelect(title string, opts []string, selected ...string) ([]string, err
 			Height(multiHeight(len(opts))).
 			Filterable(true).
 			Value(&v),
-	)).WithTheme(theme()))
+	)).WithTheme(theme()), true)
 	if errors.Is(err, errCancel) {
 		return nil, nil
 	}
@@ -124,7 +162,7 @@ func PathInput(title string) (string, error) {
 			Description("tab or → to complete").
 			SuggestionsFunc(func() []string { return pathSuggestions(v) }, &v).
 			Value(&v),
-	)).WithTheme(theme()))
+	)).WithTheme(theme()), false)
 	if errors.Is(err, errCancel) {
 		return "", nil
 	}
@@ -137,23 +175,24 @@ func pathSuggestions(typed string) []string {
 	if typed == "" {
 		return []string{"~/"}
 	}
-	real := typed
-	if strings.HasPrefix(typed, "~/") {
-		h, _ := os.UserHomeDir()
-		real = filepath.Join(h, typed[2:])
-		if strings.HasSuffix(typed, "/") {
-			real += "/"
+	i := strings.LastIndexByte(typed, '/')
+	if i < 0 {
+		if strings.HasPrefix("~/", typed) {
+			return []string{"~/"}
 		}
+		return nil
 	}
-	dir, base := filepath.Split(real)
-	if dir == "" {
-		dir = "."
+	typedDir := typed[:i+1] // up to and including the slash, exactly as typed
+	base := typed[i+1:]
+	dir := typedDir
+	if strings.HasPrefix(dir, "~/") {
+		h, _ := os.UserHomeDir()
+		dir = h + dir[1:]
 	}
 	ents, err := os.ReadDir(dir)
 	if err != nil {
 		return nil
 	}
-	typedDir := typed[:len(typed)-len(base)]
 	var out []string
 	for _, e := range ents {
 		name := e.Name()
@@ -182,7 +221,7 @@ func InputDefault(title, def string) (string, error) {
 	v := def
 	err := run(huh.NewForm(huh.NewGroup(
 		huh.NewInput().Title(title).Value(&v),
-	)).WithTheme(theme()))
+	)).WithTheme(theme()), false)
 	if errors.Is(err, errCancel) {
 		return "", nil
 	}
@@ -203,7 +242,7 @@ func ConfirmDefault(title string, def bool) (bool, error) {
 	v := def
 	err := run(huh.NewForm(huh.NewGroup(
 		huh.NewConfirm().Title(title).Value(&v),
-	)).WithTheme(theme()))
+	)).WithTheme(theme()), false)
 	if errors.Is(err, errCancel) {
 		return false, nil
 	}

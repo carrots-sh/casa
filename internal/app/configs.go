@@ -109,35 +109,29 @@ func TrackFile(path string) error {
 		return nil
 	}
 
-	// suggested unmanaged dotfiles, plus an always-present "type a path" row
+	// suggested unmanaged dotfiles, plus an always-present "type a path" row —
+	// a single pick, so enter acts on the highlighted row.
 	const other = "another file · type a path"
 	labels := []string{}
 	for _, rel := range unmanagedCommonDotfiles() {
 		labels = append(labels, tilde(rel))
 	}
 	labels = append(labels, other)
-	sel, err := ui.MultiSelect("which files should casa manage?", labels)
-	if err != nil || len(sel) == 0 {
+	sel, err := ui.Select("track which file?", labels)
+	if err != nil || sel == "" {
 		return err
 	}
-	tracked := 0
-	for _, l := range sel {
-		p := expand(l)
-		if l == other {
-			if p, err = ui.PathInput("path of the file to start managing"); err != nil || p == "" {
-				continue
-			}
-			p = expand(p)
+	p := expand(sel)
+	if sel == other {
+		if p, err = ui.PathInput("path of the file to start managing"); err != nil || p == "" {
+			return err
 		}
-		if err := trackOne(p); err != nil {
-			fmt.Printf("  (skipped %s: %v)\n", tilde(p), err)
-			continue
-		}
-		tracked++
+		p = expand(p)
 	}
-	if tracked > 0 {
-		offerSave("casa: track files")
+	if err := trackOne(p); err != nil {
+		return err
 	}
+	offerSave("casa: track " + filepath.Base(p))
 	return nil
 }
 
