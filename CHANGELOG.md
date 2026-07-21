@@ -4,6 +4,12 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.8.1
+
+- The add search offers one escape row instead of two: "command · paste an
+  install command" covers curl-pipe installers too (it routes them into the
+  sh flow), so the redundant sh row is gone. casa tools add sh still exists.
+
 ## 0.8.0
 
 - Noun clusters with ONE verb vocabulary: files / tools / secrets / machine,

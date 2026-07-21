@@ -10,9 +10,6 @@ import (
 	"github.com/carrots-sh/casa/internal/ui"
 )
 
-// shRow is the synthetic search-result row for tools with their own installer.
-const shRow = "sh     (a tool with its own installer — curl | sh)"
-
 // AddTool installs a package and records it in the manifest. With no name it
 // searches across all package managers and lets you pick where to install
 // from; "sh" and "cmd" route to the installer/pasted-command flows.
@@ -87,15 +84,12 @@ func searchPick() (string, string, error) {
 		labels[i] = l
 		byLabel[l] = r
 	}
-	labels = append(labels, shRow, cmdRow)
+	labels = append(labels, cmdRow) // covers curl|sh installers too — it routes
 	sel, err := ui.Select("install which?", labels)
 	if err != nil || sel == "" {
 		return "", "", err
 	}
-	switch sel {
-	case shRow:
-		return "sh", "", nil
-	case cmdRow:
+	if sel == cmdRow {
 		return "cmd", "", nil
 	}
 	r := byLabel[sel]
