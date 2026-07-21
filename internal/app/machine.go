@@ -1,11 +1,13 @@
 package app
 
 import (
+	_ "embed"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/carrots-sh/casa/internal/chez"
@@ -65,6 +67,13 @@ func Setup(arg string) error {
 	return chez.Apply()
 }
 
+// linuxBrewDeps installs Homebrew's documented Linux prerequisites
+// (https://docs.brew.sh/Homebrew-on-Linux) via whichever distro pm exists.
+// Mirrors the same block in install.sh — that one runs before casa exists.
+//
+//go:embed embedded/linux-brew-deps.sh
+var linuxBrewDeps string
+
 // offerBrew installs Homebrew on a fresh machine (with consent) so the
 // packages script has something to run — declining is fine, packages just
 // skip until brew shows up.
@@ -78,6 +87,10 @@ func offerBrew() error {
 			fmt.Println("skipping — packages won't install until brew exists (casa machine doctor shows how)")
 		}
 		return err
+	}
+	if runtime.GOOS == "linux" {
+		fmt.Println("installing Homebrew's Linux prerequisites...")
+		_ = runShell("/bin/sh", "-c", linuxBrewDeps)
 	}
 	fmt.Println("installing Homebrew...")
 	if err := runShell("/bin/bash", "-c",

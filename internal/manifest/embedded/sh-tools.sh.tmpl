@@ -6,8 +6,9 @@ set -e
 {{ if hasKey . "packages" -}}
 {{ range index .packages "sh" -}}
 {{ $os := default "" (get . "os") -}}
+{{ $creates := default "" (get . "creates") -}}
 {{ if or (not $os) (eq $os $.chezmoi.os) -}}
-if ! command -v {{ .bin }} >/dev/null 2>&1; then
+if {{ if $creates }}[ ! -e "{{ $creates }}" ]{{ else }}! command -v {{ .bin }} >/dev/null 2>&1{{ end }}; then
   echo "casa: installing {{ .bin }}..."
   {{ .install }}
 fi

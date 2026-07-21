@@ -58,6 +58,7 @@ type ShTool struct {
 	Install string `toml:"install"` // the installer one-liner
 	Update  string `toml:"update"`  // optional self-update command
 	OS      string `toml:"os"`      // optional: "darwin" | "linux"; "" = all
+	Creates string `toml:"creates"` // optional: path guard for installers with no binary ($HOME/.oh-my-zsh)
 }
 
 // Manifest points at a packages.toml file.
@@ -81,6 +82,7 @@ type doc struct {
 		Npm         []string `toml:"npm"`
 		Bun         []string `toml:"bun"`
 		Cargo       []string `toml:"cargo"`
+		System      []string `toml:"system"`
 		Extra       []string `toml:"extra"`
 		ExtraDarwin []string `toml:"extra_darwin"`
 		Sh          []ShTool `toml:"sh"`
@@ -120,6 +122,8 @@ func (m Manifest) List(section string) ([]string, error) {
 		return d.Packages.Bun, nil
 	case "cargo":
 		return d.Packages.Cargo, nil
+	case "system":
+		return d.Packages.System, nil
 	case "extra":
 		return d.Packages.Extra, nil
 	case "extra_darwin":
@@ -246,6 +250,9 @@ func (m Manifest) AddSh(t ShTool) error {
 	}
 	if t.OS != "" {
 		block = append(block, "os = "+strconv.Quote(t.OS))
+	}
+	if t.Creates != "" {
+		block = append(block, "creates = "+strconv.Quote(t.Creates))
 	}
 	s := strings.TrimRight(string(data), "\n") + "\n" + strings.Join(block, "\n") + "\n"
 	return os.WriteFile(m.Path, []byte(s), 0o644)

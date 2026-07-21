@@ -86,6 +86,12 @@ cargo = [
   "cargo-watch",
 ]
 
+# Linux distro packages (apt/dnf/pacman — whichever the machine has) for
+# things brew can't own: login shells, clipboard tools, ... Ignored on macOS.
+system = [
+  "zsh",
+]
+
 # Raw Brewfile lines passed through verbatim — for anything with extra
 # arguments (custom tap URLs, link: false, trusted: true, mas/vscode
 # directives, ...). Hand-managed; casa's add/remove don't touch these.
@@ -104,6 +110,7 @@ bin = "herdr"
 install = "curl -fsSL https://herdr.dev/install.sh | sh"
 update = "herdr self-update"  # optional; omit if the tool updates itself
 os = "darwin"                 # optional: darwin | linux
+creates = "$HOME/.herdr"      # optional: path guard for installers with no binary
 ```
 
 Section notes:
@@ -115,8 +122,17 @@ Section notes:
   casa's `add`/`rm` never touch them, but they still count as recorded for
   drift detection, so a hand-managed `brew "ruby", link: false` never shows up
   in `casa tools import` as an unrecorded `ruby`.
+- `system` entries install via the machine's distro package manager (apt, dnf,
+  or pacman — detected at apply) and are ignored on macOS. Use them for the few
+  things Homebrew can't own on Linux, like a login shell (`zsh`) or `xclip`.
+  Hand-managed, like `extra`.
 - Each `[[packages.sh]]` block needs `bin` (how casa detects the tool is
   installed) and `install` (the one-liner); `update` and `os` are optional.
+  For installers that don't put a binary on PATH (Oh My Zsh installs a
+  directory), set `creates` to the path the installer leaves behind — casa
+  guards on that instead of `command -v`. A block can also express a
+  post-install step: `bin = "cargo"` + `install = "rustup default stable"`
+  initializes a toolchain only while `cargo` is missing.
 
 ## What happens on apply
 

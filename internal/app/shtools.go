@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/carrots-sh/casa/internal/home"
 	"github.com/carrots-sh/casa/internal/manifest"
 	"github.com/carrots-sh/casa/internal/ui"
 )
@@ -44,6 +45,10 @@ func addShTool(bin, install string) error {
 			return fmt.Errorf("a binary name is required")
 		}
 	}
+	creates, err := ui.Input("path it creates, if no binary lands on PATH (e.g. $HOME/.oh-my-zsh — empty is normal)")
+	if err != nil {
+		return err
+	}
 	update, err := ui.Input("self-update command (leave empty if it updates itself)")
 	if err != nil {
 		return err
@@ -56,7 +61,7 @@ func addShTool(bin, install string) error {
 	if f := strings.Fields(osChoice)[0]; f == "darwin" || f == "linux" {
 		osTag = f
 	}
-	if _, err := exec.LookPath(bin); err == nil {
+	if shToolPresent(bin, creates) {
 		fmt.Printf("%s is already installed — recording it without re-running the installer.\n", bin)
 	} else {
 		ok, err := ui.Confirm("run now:  " + install)
@@ -66,20 +71,31 @@ func addShTool(bin, install string) error {
 		if err := runShell("sh", "-c", install); err != nil {
 			return fmt.Errorf("installer failed: %w", err)
 		}
-		if _, err := exec.LookPath(bin); err != nil {
-			fmt.Printf("note: %q isn't on PATH after the install — check the binary name (still recording).\n", bin)
+		if !shToolPresent(bin, creates) {
+			fmt.Printf("note: %q isn't detectable after the install — check the binary name (still recording).\n", bin)
 		}
 	}
 	m, ok, err := ensurePkg()
 	if err != nil || !ok {
 		return err
 	}
-	if err := m.AddSh(manifest.ShTool{Bin: bin, Install: install, Update: update, OS: osTag}); err != nil {
+	if err := m.AddSh(manifest.ShTool{Bin: bin, Install: install, Update: update, OS: osTag, Creates: creates}); err != nil {
 		return err
 	}
 	fmt.Printf("✓ installed and recorded: sh %q\n", bin)
 	offerSave("casa: add sh " + bin)
 	return nil
+}
+
+// shToolPresent mirrors the generated script's guard: a creates-path if the
+// tool declares one, command -v otherwise.
+func shToolPresent(bin, creates string) bool {
+	if creates != "" {
+		_, err := os.Stat(home.Expand(os.ExpandEnv(creates)))
+		return err == nil
+	}
+	_, err := exec.LookPath(bin)
+	return err == nil
 }
 
 // removeShTool drops the manifest block and offers to delete the binary the

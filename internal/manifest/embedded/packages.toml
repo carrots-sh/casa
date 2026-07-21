@@ -46,6 +46,11 @@ bun = [
 cargo = [
 ]
 
+# Linux distro packages (apt/dnf/pacman — whichever the machine has) for
+# things brew can't own: login shells, clipboard tools, ... Ignored on macOS.
+system = [
+]
+
 # Raw Brewfile lines passed through verbatim — for anything with extra
 # arguments (custom tap URLs, link: false, trusted: true, mas/vscode
 # directives, ...). Hand-managed; casa's add/remove don't touch these.
@@ -60,5 +65,6 @@ extra_darwin = [
 # [[packages.sh]]
 # bin = "herdr"
 # install = "curl -fsSL https://herdr.dev/install.sh | sh"
-# update = "herdr self-update"  # optional; omit if the tool updates itself
-# os = "darwin"                 # optional: darwin | linux
+# update = "herdr self-update"        # optional; omit if the tool updates itself
+# os = "darwin"                       # optional: darwin | linux
+# creates = "$HOME/.oh-my-zsh"        # optional: path guard for installers with no binary

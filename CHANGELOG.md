@@ -4,6 +4,17 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.13.0
+
+- Repos need **zero hand-written run scripts** now:
+  - `system = [...]` manifest section — Linux distro packages (apt/dnf/pacman,
+    detected at apply) for things brew can't own: login shells, xclip, ...
+    Ignored on macOS.
+  - `[[packages.sh]]` blocks accept `creates = "$HOME/.oh-my-zsh"` — a path
+    guard for installers that don't put a binary on PATH.
+  - `install.sh` and `casa machine setup` install Homebrew's Linux
+    prerequisites (build tools, curl, file, git) before Homebrew itself.
+
 ## 0.12.0
 
 - `casa cd` opens a subshell inside your dotfiles repo, like `chezmoi cd` —

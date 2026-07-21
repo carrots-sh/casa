@@ -34,9 +34,12 @@ $ curl -fsSL https://raw.githubusercontent.com/carrots-sh/casa/main/install.sh |
 
 The script does three things, in order:
 
-1. If `brew` is not on `PATH`, runs the official Homebrew installer
-   non-interactively, then loads `brew shellenv` from wherever it landed
-   (`/opt/homebrew`, `/home/linuxbrew/.linuxbrew`, or `/usr/local`).
+1. If `brew` is not on `PATH`, first installs Homebrew's Linux prerequisites
+   (build tools, `curl`, `file`, `git`) via apt, dnf, or pacman, then runs the
+   official Homebrew installer non-interactively and loads `brew shellenv`
+   from wherever it landed (`/opt/homebrew`, `/home/linuxbrew/.linuxbrew`, or
+   `/usr/local`). `casa machine setup` does the same when it offers to
+   install Homebrew.
 2. Runs `brew install carrots-sh/tap/casa`.
 3. If you passed an argument, runs `casa machine setup <arg>` to clone your
    dotfiles and set up the machine. See [Machine setup](machine.md).
