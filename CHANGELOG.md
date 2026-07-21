@@ -4,6 +4,11 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.6.1
+
+- Menu clusters are frequency-ordered: daily verb first, list second in
+  every cluster, occasional actions middle, destructive/rare last.
+
 ## 0.6.0
 
 - Lists open inside the TUI: the menu.s list actions (configs, tools,

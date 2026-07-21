@@ -52,35 +52,37 @@ func Menu() error {
 	for {
 		s := computeStatus()
 		sections := []section{
+			// per-cluster order: daily verb first, list second, occasional
+			// actions middle, destructive/rare last.
 			{"configs", []item{
 				{"edit", "pick + edit a config", "", func() error { return EditConfig("") }, false},
-				{"track", "start managing a file", "", func() error { return TrackFile("") }, false},
-				{"untrack", "stop managing a file", "", func() error { return UntrackFile("") }, false},
-				{"storage", "change how a file is stored", "", func() error { return ChangeStorage("") }, false},
 				{"list", "list managed files", "", func() error {
 					l, err := configLines()
 					return page("managed files", l, err)
 				}, true},
+				{"track", "start managing a file", "", func() error { return TrackFile("") }, false},
+				{"storage", "change how a file is stored", "", func() error { return ChangeStorage("") }, false},
+				{"untrack", "stop managing a file", "", func() error { return UntrackFile("") }, false},
 			}},
 			{"tools", []item{
 				{"add", "install a tool", "", func() error { return AddTool("", "") }, false},
-				{"update", "upgrade outdated tools", hint(s.updates, "updates"), func() error { return UpdateTools() }, false},
-				{"remove", "uninstall tools", "", func() error { return RemoveTools() }, false},
-				{"import", "record what's installed here", hint(s.unrecorded, "to record"), func() error { return ImportTools() }, false},
-				{"trust", "pick which taps are trusted", "", func() error { return TrustTaps() }, false},
 				{"list", "list recorded tools", "", func() error {
 					l, err := toolLines()
 					return page("recorded tools", l, err)
 				}, true},
+				{"update", "upgrade outdated tools", hint(s.updates, "updates"), func() error { return UpdateTools() }, false},
+				{"import", "record what's installed here", hint(s.unrecorded, "to record"), func() error { return ImportTools() }, false},
+				{"trust", "pick which taps are trusted", "", func() error { return TrustTaps() }, false},
+				{"remove", "uninstall tools", "", func() error { return RemoveTools() }, false},
 			}},
 			{"secrets", []item{
 				{"secret", "edit an encrypted file", "", func() error { return EditSecret("") }, false},
-				{"encrypt", "add an encrypted file", "", func() error { return AddSecret("") }, false},
-				{"keys", "manage encryption keys", "", func() error { return Keys() }, false},
 				{"list", "list encrypted files", "", func() error {
 					l, err := secretLines()
 					return page("encrypted files", l, err)
 				}, true},
+				{"encrypt", "add an encrypted file", "", func() error { return AddSecret("") }, false},
+				{"keys", "manage encryption keys", "", func() error { return Keys() }, false},
 			}},
 			{"machine", []item{
 				{"save", "publish your changes", hint(s.toSave, "to save"), func() error { return Save("") }, false},
