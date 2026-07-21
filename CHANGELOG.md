@@ -4,6 +4,11 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.5.4
+
+- The "enter to go back" pause no longer echoes stray input: raw mode, only
+  enter continues (ctrl+c still quits), everything else is swallowed silently.
+
 ## 0.5.3
 
 - Internal: the generated script and template bodies are embedded files

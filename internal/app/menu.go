@@ -2,6 +2,9 @@ package app
 
 import (
 	"fmt"
+	"os"
+
+	"github.com/charmbracelet/x/term"
 
 	"github.com/carrots-sh/casa/internal/chez"
 	"github.com/carrots-sh/casa/internal/ui"
@@ -123,10 +126,31 @@ func clearScreen() {
 }
 
 // pause holds the action's output on screen until the user is done reading.
+// Raw mode, no echo: only enter continues (ctrl+c still quits casa); every
+// other key is swallowed silently.
 func pause() {
 	fmt.Print("\n  enter to go back ")
-	var s string
-	_, _ = fmt.Scanln(&s)
+	fd := os.Stdin.Fd()
+	old, err := term.MakeRaw(fd)
+	if err != nil { // not a terminal — fall back to a plain line read
+		var s string
+		_, _ = fmt.Scanln(&s)
+		return
+	}
+	defer term.Restore(fd, old) //nolint:errcheck
+	buf := make([]byte, 1)
+	for {
+		if n, err := os.Stdin.Read(buf); err != nil || n == 0 {
+			return
+		}
+		switch buf[0] {
+		case '\r', '\n':
+			return
+		case 3: // ctrl+c
+			_ = term.Restore(fd, old)
+			os.Exit(0)
+		}
+	}
 }
 
 func hint(n int, unit string) string {
