@@ -109,33 +109,35 @@ func TrackFile(path string) error {
 		return nil
 	}
 
-	if cands := unmanagedCommonDotfiles(); len(cands) > 0 {
-		labels := make([]string, len(cands))
-		for i, rel := range cands {
-			labels[i] = tilde(rel)
-		}
-		sel, err := ui.MultiSelect("which files should casa manage?", labels)
-		if err != nil || len(sel) == 0 {
-			return err
-		}
-		for _, l := range sel {
-			rel := strings.TrimPrefix(l, "~/")
-			if err := trackOne(homePath(rel)); err != nil {
-				fmt.Printf("  (skipped %s: %v)\n", l, err)
+	// suggested unmanaged dotfiles, plus an always-present "type a path" row
+	const other = "another file · type a path"
+	labels := []string{}
+	for _, rel := range unmanagedCommonDotfiles() {
+		labels = append(labels, tilde(rel))
+	}
+	labels = append(labels, other)
+	sel, err := ui.MultiSelect("which files should casa manage?", labels)
+	if err != nil || len(sel) == 0 {
+		return err
+	}
+	tracked := 0
+	for _, l := range sel {
+		p := expand(l)
+		if l == other {
+			if p, err = ui.PathInput("path of the file to start managing"); err != nil || p == "" {
+				continue
 			}
+			p = expand(p)
 		}
+		if err := trackOne(p); err != nil {
+			fmt.Printf("  (skipped %s: %v)\n", tilde(p), err)
+			continue
+		}
+		tracked++
+	}
+	if tracked > 0 {
 		offerSave("casa: track files")
-		return nil
 	}
-
-	p, err := ui.Input("path of the file to start managing")
-	if err != nil || p == "" {
-		return err
-	}
-	if err := trackOne(expand(p)); err != nil {
-		return err
-	}
-	offerSave("casa: track " + filepath.Base(p))
 	return nil
 }
 

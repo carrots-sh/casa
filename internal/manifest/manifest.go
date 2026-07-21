@@ -30,7 +30,7 @@ const DefaultRel = ".casadata/packages.toml"
 const ChezmoiRel = ".chezmoidata/packages.toml"
 
 // Sections lists the string-list sections, in display order.
-var Sections = []string{"taps", "brew", "brew_darwin", "cask", "go", "uv", "npm", "cargo"}
+var Sections = []string{"taps", "taps_trusted", "brew", "brew_darwin", "cask", "go", "uv", "npm", "cargo"}
 
 // SectionFor maps a pm manager name to its manifest section.
 func SectionFor(mgr string) string {
@@ -43,7 +43,7 @@ func SectionFor(mgr string) string {
 // ManagerFor maps a section back to the pm manager that installs it.
 func ManagerFor(section string) string {
 	switch section {
-	case "taps":
+	case "taps", "taps_trusted":
 		return "tap"
 	case "brew_darwin":
 		return "brew"
@@ -71,15 +71,16 @@ func (m Manifest) Configured() bool {
 
 type doc struct {
 	Packages struct {
-		Taps       []string `toml:"taps"`
-		Brew       []string `toml:"brew"`
-		BrewDarwin []string `toml:"brew_darwin"`
-		Cask       []string `toml:"cask"`
-		Go         []string `toml:"go"`
-		Uv         []string `toml:"uv"`
-		Npm        []string `toml:"npm"`
-		Cargo      []string `toml:"cargo"`
-		Sh         []ShTool `toml:"sh"`
+		Taps        []string `toml:"taps"`
+		TapsTrusted []string `toml:"taps_trusted"`
+		Brew        []string `toml:"brew"`
+		BrewDarwin  []string `toml:"brew_darwin"`
+		Cask        []string `toml:"cask"`
+		Go          []string `toml:"go"`
+		Uv          []string `toml:"uv"`
+		Npm         []string `toml:"npm"`
+		Cargo       []string `toml:"cargo"`
+		Sh          []ShTool `toml:"sh"`
 	} `toml:"packages"`
 }
 
@@ -98,6 +99,8 @@ func (m Manifest) List(section string) ([]string, error) {
 	switch section {
 	case "taps":
 		return d.Packages.Taps, nil
+	case "taps_trusted":
+		return d.Packages.TapsTrusted, nil
 	case "brew":
 		return d.Packages.Brew, nil
 	case "brew_darwin":

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
@@ -58,6 +60,26 @@ func Select(title string, opts []string) (string, error) {
 	return SelectDefault(title, opts, "")
 }
 
+// height caps long lists so they scroll instead of flooding the screen; short
+// lists get 0 = unset, which makes huh size the viewport to the options (no
+// blank filler rows).
+func height(n int) int {
+	if n > 10 {
+		return 14
+	}
+	return 0
+}
+
+// multiHeight is height for MultiSelect, whose auto-size clips the last row
+// (the title is subtracted from the options height), so short lists get an
+// explicit options+title height instead of 0.
+func multiHeight(n int) int {
+	if n > 10 {
+		return 14
+	}
+	return n + 1
+}
+
 // SelectDefault is Select with the cursor starting on def (when present).
 func SelectDefault(title string, opts []string, def string) (string, error) {
 	v := def
@@ -65,7 +87,7 @@ func SelectDefault(title string, opts []string, def string) (string, error) {
 		huh.NewSelect[string]().
 			Title(title).
 			Options(huh.NewOptions(opts...)...).
-			Height(14).
+			Height(height(len(opts))).
 			Filtering(true).
 			Value(&v),
 	)).WithTheme(theme()))
@@ -82,7 +104,7 @@ func MultiSelect(title string, opts []string, selected ...string) ([]string, err
 		huh.NewMultiSelect[string]().
 			Title(title).
 			Options(huh.NewOptions(opts...)...).
-			Height(14).
+			Height(multiHeight(len(opts))).
 			Filterable(true).
 			Value(&v),
 	)).WithTheme(theme()))
@@ -90,6 +112,64 @@ func MultiSelect(title string, opts []string, selected ...string) ([]string, err
 		return nil, nil
 	}
 	return v, err
+}
+
+// PathInput prompts for a filesystem path with as-you-type completion
+// (suggestions come from the directory being typed; tab/→ accepts).
+func PathInput(title string) (string, error) {
+	var v string
+	err := run(huh.NewForm(huh.NewGroup(
+		huh.NewInput().
+			Title(title).
+			Description("tab or → to complete").
+			SuggestionsFunc(func() []string { return pathSuggestions(v) }, &v).
+			Value(&v),
+	)).WithTheme(theme()))
+	if errors.Is(err, errCancel) {
+		return "", nil
+	}
+	return v, err
+}
+
+// pathSuggestions completes the typed path from the filesystem, preserving the
+// user's spelling of the prefix (~ stays ~). Directories get a trailing /.
+func pathSuggestions(typed string) []string {
+	if typed == "" {
+		return []string{"~/"}
+	}
+	real := typed
+	if strings.HasPrefix(typed, "~/") {
+		h, _ := os.UserHomeDir()
+		real = filepath.Join(h, typed[2:])
+		if strings.HasSuffix(typed, "/") {
+			real += "/"
+		}
+	}
+	dir, base := filepath.Split(real)
+	if dir == "" {
+		dir = "."
+	}
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	typedDir := typed[:len(typed)-len(base)]
+	var out []string
+	for _, e := range ents {
+		name := e.Name()
+		if !strings.HasPrefix(name, base) {
+			continue
+		}
+		s := typedDir + name
+		if e.IsDir() {
+			s += "/"
+		}
+		out = append(out, s)
+		if len(out) == 12 {
+			break
+		}
+	}
+	return out
 }
 
 // Input prompts for free text.

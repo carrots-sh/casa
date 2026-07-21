@@ -35,6 +35,7 @@ tools     add [manager] [name]  install a tool and record it in your manifest
           update                upgrade outdated tools — one, many, or all
           list                  list recorded tools
           import                seed the manifest from what's installed here
+          trust                 pick which taps update without prompting
 secrets   add [path]            encrypt and start managing a file
           edit [name]           pick a secret, decrypt, edit, re-encrypt
           list                  list encrypted files
@@ -113,6 +114,8 @@ func dispatch(args []string) error {
 			return app.ListTools()
 		case "import":
 			return app.ImportTools()
+		case "trust":
+			return app.TrustTaps()
 		}
 	case "secrets":
 		switch arg(args, 1) {

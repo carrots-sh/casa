@@ -45,6 +45,7 @@ func Menu() error {
 				{"update", "upgrade outdated tools", hint(s.updates, "updates"), func() error { return UpdateTools() }},
 				{"remove", "uninstall tools", "", func() error { return RemoveTools() }},
 				{"import", "record what's installed here", "", func() error { return ImportTools() }},
+				{"trust", "pick which taps are trusted", "", func() error { return TrustTaps() }},
 				{"list tools", "list recorded tools", "", func() error { return ListTools() }},
 			}},
 			{"secrets", []item{
@@ -100,14 +101,31 @@ func Menu() error {
 			def = byName["upgrade"]
 		}
 
+		clearScreen()
 		choice, err := ui.SelectDefault("casa · "+s.machine, labels, def)
 		if err != nil || choice == "" || choice == byName["quit"] {
 			return err
 		}
 		if action := run[choice]; action != nil {
+			clearScreen()
 			report(action())
+			pause()
 		}
 	}
+}
+
+// clearScreen wipes the visible screen so each menu/action starts on a clean
+// page instead of piling frames up. Scrollback from before casa started is
+// left alone.
+func clearScreen() {
+	fmt.Print("\033[H\033[2J")
+}
+
+// pause holds the action's output on screen until the user is done reading.
+func pause() {
+	fmt.Print("\n  enter to go back ")
+	var s string
+	_, _ = fmt.Scanln(&s)
 }
 
 func hint(n int, unit string) string {

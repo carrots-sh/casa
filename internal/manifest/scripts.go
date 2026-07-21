@@ -25,6 +25,11 @@ const skeleton = `# casa's package manifest — the single source of truth for t
 taps = [
 ]
 
+# Taps whose formulae brew bundle may manage without prompting
+# (casa tools trust moves taps here)
+taps_trusted = [
+]
+
 # CLI tools — cross-platform (macOS + Linux via Homebrew)
 brew = [
 ]
@@ -83,6 +88,7 @@ command -v brew >/dev/null 2>&1 || { echo "casa: brew not found; skipping packag
 
 brewfile=$(cat <<'BREWFILE'
 {{ range index .packages "taps" }}tap "{{ . }}"
+{{ end }}{{ range index .packages "taps_trusted" }}tap "{{ . }}", trusted: true
 {{ end }}{{ range index .packages "extra" }}{{ . }}
 {{ end }}{{ range index .packages "brew" }}brew "{{ . }}"
 {{ end }}{{ if eq .chezmoi.os "darwin" }}{{ range index .packages "brew_darwin" }}brew "{{ . }}"
