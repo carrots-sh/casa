@@ -22,6 +22,7 @@ func resolve() string {
 	if srcCached != "" {
 		return srcCached
 	}
+	defer func() { EnsureMirrors(srcCached) }() // self-heal before first chezmoi call
 	if v := strings.TrimSpace(os.Getenv("CASA_SOURCE")); v != "" {
 		srcCached = v
 		return srcCached
@@ -42,6 +43,65 @@ func resolve() string {
 	}
 	srcCached = casa
 	return srcCached
+}
+
+// mirrors pairs casa-named special files with the chezmoi names chezmoi
+// hardcodes. casa repos commit only the casa names; the chezmoi names are
+// gitignored symlinks recreated here on demand. Repos that use chezmoi names
+// directly are left untouched (the casa file simply doesn't exist).
+var mirrors = [][2]string{
+	{".casa.toml.tmpl", ".chezmoi.toml.tmpl"},
+	{".casaignore", ".chezmoiignore"},
+	{".casadata", ".chezmoidata"},
+}
+
+// EnsureMirrors creates any missing chezmoi-named symlinks for casa-named
+// special files in dir, and keeps them gitignored. Safe to call repeatedly.
+func EnsureMirrors(dir string) {
+	var ignore []string
+	for _, m := range mirrors {
+		casa, chz := m[0], m[1]
+		if _, err := os.Stat(filepath.Join(dir, casa)); err != nil {
+			continue
+		}
+		link := filepath.Join(dir, chz)
+		if _, err := os.Lstat(link); os.IsNotExist(err) {
+			_ = os.Symlink(casa, link)
+		}
+		ignore = append(ignore, chz)
+	}
+	ensureGitignored(dir, ignore)
+}
+
+// ensureGitignored appends any missing names to dir's .gitignore.
+func ensureGitignored(dir string, names []string) {
+	if len(names) == 0 {
+		return
+	}
+	path := filepath.Join(dir, ".gitignore")
+	data, _ := os.ReadFile(path)
+	have := map[string]bool{}
+	for l := range strings.SplitSeq(string(data), "\n") {
+		have[strings.TrimSpace(l)] = true
+	}
+	var missing []string
+	for _, n := range names {
+		if !have[n] {
+			missing = append(missing, n)
+		}
+	}
+	if len(missing) == 0 {
+		return
+	}
+	s := string(data)
+	if s != "" && !strings.HasSuffix(s, "\n") {
+		s += "\n"
+	}
+	if !strings.Contains(s, "chezmoi-named mirrors") {
+		s += "# chezmoi-named mirrors of the .casa* files (casa recreates them)\n"
+	}
+	s += strings.Join(missing, "\n") + "\n"
+	_ = os.WriteFile(path, []byte(s), 0o644)
 }
 
 // SetSource overrides the resolved source dir (used after `setup` clones).
@@ -122,8 +182,10 @@ func ApplyNoScripts(paths ...string) error {
 // Update pulls the repo and applies (catch this machine up).
 func Update() error { return run("update") }
 
-// InitApply clones repo into casa's source dir and applies it.
-func InitApply(repo string) error { return run("init", "--apply", repo) }
+// InitApply runs init --apply against the already-cloned source dir (prompts
+// from the config template, then applies). The clone happens first so casa can
+// recreate the gitignored chezmoi-name mirrors before chezmoi looks for them.
+func InitApply() error { return run("init", "--apply") }
 
 // Edit opens a managed file in the configured editor and applies on close.
 func Edit(homePath string) error { return run("edit", "--apply", homePath) }

@@ -1,8 +1,9 @@
 // Package manifest reads and edits casa's package manifest —
-// .chezmoidata/packages.toml in the chezmoi source dir. It is the single
-// source of truth for what's installed on a machine: chezmoi loads it as
-// template data, and the run_onchange scripts (see scripts.go) render it into
-// a brew bundle run and an installers script on every apply.
+// .casadata/packages.toml in the source dir (chezmoi reads it through the
+// .chezmoidata mirror symlink). It is the single source of truth for what's
+// installed on a machine: chezmoi loads it as template data, and the
+// run_onchange scripts (see scripts.go) render it into a brew bundle run and
+// an installers script on every apply.
 //
 // Reads decode the TOML properly; writes edit the file line by line so
 // hand-written comments and ordering survive.
@@ -19,8 +20,14 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// DefaultRel is the manifest's default path relative to the source dir.
-const DefaultRel = ".chezmoidata/packages.toml"
+// DefaultRel is the manifest's default path relative to the source dir. The
+// dir carries casa's name; chezmoi reads it through the .chezmoidata symlink
+// that chez.EnsureMirrors maintains.
+const DefaultRel = ".casadata/packages.toml"
+
+// ChezmoiRel is the fallback location for repos that already have a real
+// (non-symlink) .chezmoidata directory of their own.
+const ChezmoiRel = ".chezmoidata/packages.toml"
 
 // Sections lists the string-list sections, in display order.
 var Sections = []string{"taps", "brew", "brew_darwin", "cask", "go", "uv", "npm", "cargo"}

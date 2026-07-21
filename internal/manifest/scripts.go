@@ -74,7 +74,7 @@ extra_darwin = [
 // packagesScript pipes the manifest, rendered as a Brewfile, straight into
 // brew bundle — no Brewfile ever exists on disk.
 const packagesScript = `#!/bin/bash
-# Managed by casa — installs everything declared in .chezmoidata/packages.toml.
+# Managed by casa — installs everything declared in casa's package manifest.
 # Re-runs on ` + "`chezmoi apply`" + ` whenever the rendered package list below changes.
 # Removing a package from the manifest + apply → brew bundle cleanup uninstalls it.
 set -e
@@ -115,7 +115,7 @@ exit "$status"
 // re-runs free and the whole script idempotent.
 const shToolsScript = `#!/bin/sh
 # Managed by casa — tools that ship their own installer, declared under
-# [[packages.sh]] in .chezmoidata/packages.toml. Re-runs on ` + "`chezmoi apply`" + `
+# [[packages.sh]] in casa's package manifest. Re-runs on ` + "`chezmoi apply`" + `
 # when the list changes; the command -v guards keep re-runs free.
 set -e
 {{ if hasKey . "packages" -}}

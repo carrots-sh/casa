@@ -75,7 +75,7 @@ casa machine  setup [repo] | sync | save [msg] | status | context | doctor | inf
 
 ## Tools: one manifest, no Brewfile
 
-Everything you install through casa is recorded in **`.chezmoidata/packages.toml`**
+Everything you install through casa is recorded in **`.casadata/packages.toml`**
 — a single hand-editable file that chezmoi loads as template data. On every
 `chezmoi apply`, run scripts render it straight into `brew bundle --file=-`
 (install + cleanup) and run any self-installing tools; no Brewfile ever exists
@@ -98,14 +98,23 @@ at your repo root:
 
 ```toml
 [pkg]
-manifest = ".chezmoidata/packages.toml"  # where `casa tools add` records (this is the default)
+manifest = ".casadata/packages.toml"  # where `casa tools add` records (this is the default)
 
 [setup]
-repo = "your-username"                   # default for `casa machine setup`
+repo = "your-username"                # default for `casa machine setup`
 ```
 
-Contexts (work/personal/…) come from your repo's `.chezmoi.toml.tmpl` prompts —
+Contexts (work/personal/…) come from your repo's config template prompts —
 casa doesn't define them, so it adapts to anyone's setup.
+
+## casa names, chezmoi machinery
+
+Special files in a casa repo carry casa names — `.casa.toml.tmpl`,
+`.casaignore`, `.casadata/` — and casa maintains gitignored symlinks to the
+names chezmoi hardcodes (`.chezmoi.toml.tmpl`, `.chezmoiignore`,
+`.chezmoidata`), recreating them automatically before any chezmoi call. Repos
+that use chezmoi names directly work unchanged. To use a casa repo with bare
+chezmoi (no casa installed), create the three symlinks by hand once per clone.
 
 ## Versioning
 

@@ -44,7 +44,15 @@ func Setup(arg string) error {
 		return err
 	}
 	fmt.Printf("setting up this machine from %s\n  into %s ...\n", url, target)
-	return chez.InitApply(url)
+	// clone ourselves (not chezmoi init <repo>) so the gitignored chezmoi-name
+	// mirrors exist before chezmoi goes looking for its config template.
+	if _, err := os.Stat(filepath.Join(target, ".git")); os.IsNotExist(err) {
+		if err := runShell("git", "clone", url, target); err != nil {
+			return err
+		}
+	}
+	chez.EnsureMirrors(target)
+	return chez.InitApply()
 }
 
 // pickRepoURL resolves arg to a reachable clone URL, preferring SSH then HTTPS.

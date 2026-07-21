@@ -3,6 +3,7 @@
 package config
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
@@ -26,6 +27,13 @@ func Load() Config {
 	_, _ = toml.DecodeFile(filepath.Join(src, ".casa.toml"), &c)
 	if c.Pkg.Manifest == "" {
 		c.Pkg.Manifest = manifest.DefaultRel
+		// a repo with its own real .chezmoidata dir (not casa's mirror symlink)
+		// keeps the manifest there — chezmoi only loads data from that name.
+		if fi, err := os.Lstat(filepath.Join(src, ".chezmoidata")); err == nil && fi.IsDir() {
+			if _, err := os.Stat(filepath.Join(src, manifest.DefaultRel)); err != nil {
+				c.Pkg.Manifest = manifest.ChezmoiRel
+			}
+		}
 	}
 	return c
 }

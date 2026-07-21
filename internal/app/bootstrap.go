@@ -32,6 +32,7 @@ func ensurePkg() (manifest.Manifest, bool, error) {
 	if err != nil {
 		return m, false, err
 	}
+	chez.EnsureMirrors(chez.SourceDir()) // .casadata needs its .chezmoidata symlink now
 	for _, f := range created {
 		fmt.Println("  + " + f)
 	}
