@@ -133,7 +133,7 @@ func RemoveTools() error {
 		fmt.Println("nothing recorded yet — try: casa tools add")
 		return nil
 	}
-	sel, err := ui.MultiSelect("remove which? (space to pick, enter to confirm)", labels)
+	sel, err := ui.MultiSelect("remove which?", labels)
 	if err != nil || len(sel) == 0 {
 		return err
 	}
@@ -166,7 +166,7 @@ func UpdateTools() error {
 	}
 	// ponytail: uv/cargo blanket upgrades only reachable when something has updates.
 	items = append(items, "uv    (upgrade all uv tools)", "cargo (upgrade all)")
-	sel, err := ui.MultiSelect("update which? (space to pick, enter to confirm)", items)
+	sel, err := ui.MultiSelect("update which?", items)
 	if err != nil || len(sel) == 0 {
 		return err
 	}

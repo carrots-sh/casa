@@ -4,6 +4,12 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.9.2
+
+- Key copy is consistent: space is the advertised select/toggle key
+  everywhere (tab and x still work); titles no longer repeat key
+  instructions — the help line is the single source of truth.
+
 ## 0.9.1
 
 - Drift diffs print colored straight to the terminal (chezmoi's diff, no

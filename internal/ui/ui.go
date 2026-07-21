@@ -90,7 +90,7 @@ func keymap(list bool) *huh.KeyMap {
 	km.Select.Submit = key.NewBinding(key.WithKeys("enter"), key.WithHelp("esc/←", "back"))
 
 	// multiselect: tab toggles (space/x still work), enter submits
-	km.MultiSelect.Toggle = key.NewBinding(key.WithKeys("tab", "space", "x"), key.WithHelp("tab", "select"))
+	km.MultiSelect.Toggle = key.NewBinding(key.WithKeys("space", "tab", "x"), key.WithHelp("space", "select"))
 	km.MultiSelect.Next = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "submit"))
 	km.MultiSelect.Submit = key.NewBinding(key.WithKeys("enter"), key.WithHelp("esc/←", "back"))
 
@@ -99,7 +99,7 @@ func keymap(list bool) *huh.KeyMap {
 	km.Input.AcceptSuggestion = key.NewBinding(key.WithKeys("tab", "right", "ctrl+e"), key.WithHelp("tab", "complete"))
 
 	// confirm: tab toggles like in lists
-	km.Confirm.Toggle = key.NewBinding(key.WithKeys("tab", "h", "l", "right", "left"), key.WithHelp("tab/←/→", "toggle"))
+	km.Confirm.Toggle = key.NewBinding(key.WithKeys("space", "tab", "h", "l", "right", "left"), key.WithHelp("space/←/→", "toggle"))
 	km.Confirm.Next = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "submit"))
 	return km
 }
