@@ -4,6 +4,20 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.5.0
+
+- **Run scripts are casa-generated, never repo content**: the packages,
+  sh-tools, and key-restore scripts no longer live in your repo — casa writes
+  them into the source dir (gitignored, like the chezmoi-name mirrors) and
+  refreshes them from the installed casa's embedded templates before every
+  chezmoi call. Behavior always matches your casa version; script staleness
+  across repos is impossible; repos carry only data. Existing committed
+  copies: `git rm --cached` them and casa takes over.
+- **Drift fix**: hand-managed `extra`/`extra_darwin` lines now count as
+  recorded, so `tools import` can't re-add them as plain entries (a
+  duplicate like `brew "ruby"` vs `brew "ruby", link: false` broke
+  brew bundle at the link step).
+
 ## 0.4.0
 
 - **Fresh machines are fully self-sufficient**: `machine setup` offers to
