@@ -1,9 +1,32 @@
 # Changelog
 
-casa uses **date-based versioning**: the version is the release date, tagged
-`vYYYY.MM.DD-N` (date, then a same-day counter that's always present), e.g.
-`v2026.06.21-0`, then `v2026.06.21-1` for a second release the same day.
-Entries below are keyed by version date, newest first.
+casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
+v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
+retired when the scheme changed — their entries remain below for history.)
+
+## 0.1.0
+
+First semver release — everything since the last date-based one:
+
+- **One manifest, no Brewfile**: every tool is recorded in `.casadata/packages.toml`;
+  on apply it renders straight into `brew bundle --file=-` (install + cleanup).
+  First `tools add` bootstraps the manifest, imports a legacy Brewfile, or scans
+  the machine (`tools import`). Self-installing tools (`curl … | sh`) are
+  first-class `[[packages.sh]]` entries with optional self-update commands.
+- **Templates & setup questions**: track asks how to store files (plain /
+  template / encrypted / encrypted template), `configs storage` converts later,
+  `machine answers` / `machine question` manage the setup questionnaire in
+  casa's own UI, encrypted templates validate on edit.
+- **casa names everywhere**: repos commit `.casa.toml.tmpl`, `.casaignore`,
+  `.casadata/` — casa self-heals the gitignored chezmoi-name symlinks before
+  every chezmoi call, and fresh-machine setup clones first so the questionnaire
+  is found.
+- **Self-updater**: `casa upgrade` pulls the latest GitHub release in place.
+- **UX**: paths display as `~/…` everywhere; the menu clusters commands by
+  domain (configs / tools / secrets / machine / casa) with urgency moving the
+  cursor, not the rows.
+- **Tooling**: `make ship` = fmt + lint + modernize + tests + pty-driven e2e
+  suite + install.
 
 ## 2026.06.22-0
 

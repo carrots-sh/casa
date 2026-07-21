@@ -20,7 +20,7 @@ const repo = "carrots-sh/casa"
 
 var client = &http.Client{Timeout: 60 * time.Second}
 
-// Latest returns the newest release tag, e.g. "v2026.06.22-7".
+// Latest returns the newest release tag, e.g. "v0.1.0".
 func Latest() (string, error) {
 	resp, err := client.Get("https://api.github.com/repos/" + repo + "/releases/latest")
 	if err != nil {
@@ -43,29 +43,36 @@ func Latest() (string, error) {
 }
 
 // Newer reports whether latest is a strictly newer release than current.
-// Dev builds (anything that isn't a vYYYY.MM.DD-N version) never compare newer.
+// Dev and go-pseudo builds (anything that isn't a vMAJOR.MINOR.PATCH semver)
+// never compare newer.
 func Newer(current, latest string) bool {
-	cd, cn, cok := parseVersion(current)
-	ld, ln, lok := parseVersion(latest)
+	c, cok := parseVersion(current)
+	l, lok := parseVersion(latest)
 	if !cok || !lok {
 		return false
 	}
-	if cd != ld {
-		return ld > cd
+	for i := range c {
+		if l[i] != c[i] {
+			return l[i] > c[i]
+		}
 	}
-	return ln > cn
+	return false
 }
 
-// parseVersion splits casa's date-based version ("v2026.06.22-7" or
-// "2026.06.22-7") into its date and counter.
-func parseVersion(v string) (date string, n int, ok bool) {
-	v = strings.TrimPrefix(v, "v")
-	date, c, found := strings.Cut(v, "-")
-	if !found || len(date) != len("2026.06.22") || !strings.HasPrefix(date, "20") {
-		return "", 0, false
+// parseVersion parses a "v1.2.3" or "1.2.3" semver into its three parts.
+func parseVersion(v string) (parts [3]int, ok bool) {
+	fields := strings.Split(strings.TrimPrefix(v, "v"), ".")
+	if len(fields) != 3 {
+		return parts, false
 	}
-	n, err := strconv.Atoi(c)
-	return date, n, err == nil
+	for i, f := range fields {
+		n, err := strconv.Atoi(f)
+		if err != nil || n < 0 {
+			return parts, false
+		}
+		parts[i] = n
+	}
+	return parts, true
 }
 
 // Upgrade downloads the release build for this OS/arch and atomically replaces

@@ -1,9 +1,15 @@
 name: release
 
-# Date-based versioning (Stripe-style): the version IS the release date.
-# Tag layout vYYYY.MM.DD-N — date, then a same-day counter (always present).
+# Semver releases: vMAJOR.MINOR.PATCH. Run with the part to bump (default
+# patch); the workflow computes the next tag from the latest existing one.
 on:
   workflow_dispatch:
+    inputs:
+      bump:
+        description: which version part to bump
+        type: choice
+        options: [patch, minor, major]
+        default: patch
 
 permissions:
   contents: write
@@ -20,20 +26,23 @@ jobs:
         with:
           go-version: stable
 
-      - name: compute date version
+      - name: compute next version
         id: tag
         run: |
           set -eu
-          BASE="v$(date -u +%Y.%m.%d)"
-          # Next same-day counter: max existing + 1, else 0.
-          N=0
-          for t in $(git tag --list "${BASE}-*"); do
-            c=${t##*-}
-            case "$c" in ''|*[!0-9]*) continue ;; esac
-            [ "$c" -ge "$N" ] && N=$((c + 1))
-          done
-          TAG="${BASE}-${N}"
-          echo "date version: $TAG"
+          LATEST="$(git tag --list | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)"
+          if [ -z "$LATEST" ]; then
+            TAG="v0.1.0"
+          else
+            V="${LATEST#v}"
+            MAJ="${V%%.*}"; REST="${V#*.}"; MIN="${REST%%.*}"; PAT="${REST#*.}"
+            case "${{ inputs.bump }}" in
+              major) TAG="v$((MAJ + 1)).0.0" ;;
+              minor) TAG="v${MAJ}.$((MIN + 1)).0" ;;
+              *)     TAG="v${MAJ}.${MIN}.$((PAT + 1))" ;;
+            esac
+          fi
+          echo "next version: $TAG (bump: ${{ inputs.bump }}, from: ${LATEST:-none})"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       - name: create and push tag

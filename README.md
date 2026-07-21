@@ -133,7 +133,7 @@ chezmoi (no casa installed), create the three symlinks by hand once per clone.
 
 ## Versioning
 
-Date-based (Stripe-style): `vYYYY.MM.DD-N`. See [CHANGELOG.md](CHANGELOG.md).
+Semver: `vMAJOR.MINOR.PATCH`. See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
