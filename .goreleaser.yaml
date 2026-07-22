@@ -52,6 +52,7 @@ brews:
     license: MIT
     dependencies:
       - name: chezmoi
+      - name: age # key restore runs before the packages script could ever install it
       - name: git
         type: optional
     install: |

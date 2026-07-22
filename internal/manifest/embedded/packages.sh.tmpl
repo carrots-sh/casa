@@ -38,13 +38,19 @@ brewfile=$(cat <<'BREWFILE'
 # empty Brewfile would uninstall everything. Never run against an empty list.
 [ -n "${brewfile//[[:space:]]/}" ] || { echo "casa: package manifest is empty; skipping"; exit 0; }
 
-printf '%s\n' "$brewfile" | brew bundle --file=-
+# A failing entry (dead formula, network blip) must not abort the whole
+# apply — warn and keep going; retries happen whenever the list changes.
+printf '%s\n' "$brewfile" | brew bundle --file=- || {
+  echo "casa: warning: some packages failed to install (see above)."
+  echo "casa: the rest of your setup continues — fix or remove the failing entries, then casa sync retries."
+}
 
 # Uninstall anything installed but no longer declared. brew bundle's uv cleanup
 # mis-parses 'uv tool list' (treats the "- <exe>" bullet lines as a tool named
 # "-") and prints a harmless "invalid value '-'" error while still exiting 0.
-# Filter just that line; preserve the real exit status.
-out=$(printf '%s\n' "$brewfile" | brew bundle cleanup --force --file=- 2>&1) && status=0 || status=$?
+# Filter just that line.
+out=$(printf '%s\n' "$brewfile" | brew bundle cleanup --force --file=- 2>&1) || \
+  echo "casa: warning: package cleanup failed (see above) — continuing"
 printf '%s\n' "$out" | grep -vF "invalid value '-'" || true
 
 # bun globals — brew bundle can't manage these. bun add -g is idempotent and
@@ -52,8 +58,7 @@ printf '%s\n' "$out" | grep -vF "invalid value '-'" || true
 # bun entry by hand needs a manual bun remove -g (casa's rm does it for you).
 {{ if index .packages "bun" -}}
 if command -v bun >/dev/null 2>&1; then
-{{ range index .packages "bun" }}  bun add -g "{{ . }}"
+{{ range index .packages "bun" }}  bun add -g "{{ . }}" || echo "casa: warning: bun add {{ . }} failed — continuing"
 {{ end }}fi
 {{ end -}}
-exit "$status"
 {{ end -}}

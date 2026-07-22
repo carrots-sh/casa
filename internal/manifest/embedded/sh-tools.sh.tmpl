@@ -10,7 +10,7 @@ set -e
 {{ if or (not $os) (eq $os $.chezmoi.os) -}}
 if {{ if $creates }}[ ! -e "{{ $creates }}" ]{{ else }}! command -v {{ .bin }} >/dev/null 2>&1{{ end }}; then
   echo "casa: installing {{ .bin }}..."
-  {{ .install }}
+  ( {{ .install }} ) || echo "casa: warning: {{ .bin }} installer failed — continuing"
 fi
 {{ end -}}
 {{ end -}}
