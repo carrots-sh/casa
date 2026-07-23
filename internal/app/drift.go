@@ -44,7 +44,7 @@ func Drift() error {
 		if len(targets) == 0 {
 			fmt.Println("✓ nothing drifted — this machine matches the repo")
 			if scripts > 0 {
-				fmt.Printf("  (%d run script(s) pending — they run on the next casa sync)\n", scripts)
+				fmt.Printf("  (%d run script(s) pending — they run on the next casa pull)\n", scripts)
 			}
 			return nil
 		}

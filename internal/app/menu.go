@@ -89,12 +89,12 @@ func Menu() error {
 				{"remove", "stop managing a secret", "", func() error { return RemoveSecret() }, false},
 			}},
 			{"machine", []item{
-				{"save", "push · your changes → repo", hint(s.toSave, "to push"), func() error { return Save("") }, false},
-				{"sync", "pull · repo → this machine (pushes yours first)", hint(s.behind, "behind"), func() error { return Sync() }, false},
+				{"push", "your changes → repo", hint(s.toSave, "to push"), func() error { return Save("") }, false},
+				{"pull", "repo → this machine (pushes yours first)", hint(s.behind, "to pull"), func() error { return Sync() }, false},
 				{"status", "full overview", "", func() error { return Status() }, false},
 				{"answers", "your setup answers", "", func() error { return Answers("") }, false},
 				{"question", "add a setup question", "", func() error { return AddQuestion() }, false},
-				{"undo", "revert the last save", "", func() error { return Undo() }, false},
+				{"undo", "revert the last push", "", func() error { return Undo() }, false},
 				{"setup", "provision from a dotfiles repo", "", func() error { return Setup("") }, false},
 				{"doctor", "health check", "", func() error { return Doctor() }, false},
 				{"info", "machine + repo basics", "", func() error { return Info() }, false},
@@ -131,9 +131,9 @@ func Menu() error {
 		def := ""
 		switch {
 		case s.toSave > 0:
-			def = byName["save"]
+			def = byName["push"]
 		case s.behind > 0:
-			def = byName["sync"]
+			def = byName["pull"]
 		case s.upgrade != "":
 			def = byName["upgrade"]
 		}

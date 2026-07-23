@@ -66,7 +66,7 @@ func offerSave(msg string) {
 func saveAll(msg string) error {
 	porcelain, _ := chez.GitOut("status", "--porcelain")
 	if strings.TrimSpace(porcelain) == "" {
-		fmt.Println("nothing to save — everything's already committed.")
+		fmt.Println("nothing to push — everything's already in your repo.")
 		return nil
 	}
 	if err := chez.Git("add", "-A"); err != nil {
@@ -76,9 +76,9 @@ func saveAll(msg string) error {
 		return err
 	}
 	if err := chez.Git("push"); err != nil {
-		fmt.Println("committed locally, but push failed — push later from casa → save.")
+		fmt.Println("committed locally, but push failed — retry with: casa push")
 		return nil
 	}
-	fmt.Println("✓ saved + pushed  (casa undo to revert)")
+	fmt.Println("✓ pushed  (casa undo to revert)")
 	return nil
 }

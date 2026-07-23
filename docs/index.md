@@ -34,7 +34,7 @@ See [Repository layout](repo-layout.md) for the details of this arrangement.
 | [Configs](configs.md) | Track, edit, and untrack dotfiles; choose plain, template, or encrypted storage and convert between them. |
 | [Tools](tools.md) | Record every installed tool in one `.casadata/packages.toml` manifest — Homebrew, casks, taps, go, uv, npm, bun, cargo, and self-installing `curl \| sh` tools. |
 | [Secrets](secrets.md) | Encrypt files with age, manage keys without a registry, back keys up to your repo, and sync them through Doppler. |
-| [Machine](machine.md) | Provision a new machine from your repo, sync, save with auto commit messages, change setup answers, undo, and run health checks. |
+| [Machine](machine.md) | Provision a new machine from your repo, pull, push with auto commit messages, change setup answers, undo, and run health checks. |
 | [Repository layout](repo-layout.md) | How casa maps onto chezmoi: casa-named special files, self-healing symlinks, generated run scripts, and using your repo without casa. |
 | [Reference](reference.md) | Every command, environment variable, keyboard control, and the `.casa.toml` config file. |
 | [Design](design.md) | The architecture and the reasoning behind casa's main decisions. |
@@ -72,8 +72,8 @@ also top-level shortcuts:
 
 ```bash
 casa edit [name]     # pick and edit a config
-casa save [msg]      # push: your changes → repo (alias: casa push)
-casa sync            # pull: repo → this machine, pushing yours first (alias: casa pull)
+casa push [msg]      # your changes → repo
+casa pull            # repo → this machine, pushing yours first
 casa status          # what's changed, behind, or outdated
 ```
 

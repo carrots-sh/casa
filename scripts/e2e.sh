@@ -128,7 +128,7 @@ exp "track — plain (default)" <<EOF
 spawn casa configs track $HOME/.plainrc
 must "same on every machine"; hit "\r"
 must "now managing"
-must "saved + pushed"
+must "pushed"
 EOF
 [ -f "$CASA_SOURCE/dot_plainrc" ] || fail "plain source missing"
 
@@ -137,7 +137,7 @@ exp "track — template default via data-value heuristic" <<EOF
 spawn casa configs track $HOME/.tplrc
 must "same on every machine"; hit "\r"
 must "now managing"
-must "saved + pushed"
+must "pushed"
 EOF
 grep -q "{{ .email }}" "$CASA_SOURCE/dot_tplrc.tmpl" || fail "autotemplate did not substitute"
 
@@ -146,7 +146,7 @@ exp "track — encrypted default via sensitive-name heuristic" <<EOF
 spawn casa configs track $HOME/.apitoken.key
 must "same on every machine"; hit "\r"
 must "now managing"
-must "saved + pushed"
+must "pushed"
 EOF
 ls "$CASA_SOURCE" | grep "encrypted_dot_apitoken.key.age" >/dev/null || fail "encrypted source missing"
 
@@ -181,7 +181,7 @@ spawn casa secrets add $HOME/.vault.token
 must "★ default"
 sleep 0.3; send "vault"; sleep 0.3; send "\r"
 must "encrypted with vault"
-must "saved + pushed"
+must "pushed"
 EOF
 # main's identity must NOT open it; the registry-driven config must
 age --decrypt --identity "$HOME/.config/casa/keys/main.txt" \
@@ -200,7 +200,7 @@ must "passphrase"
 sleep 0.5; send "e2e-pass\r"
 sleep 0.5; send "e2e-pass\r"
 must "backed up vault"
-must "saved + pushed"
+must "pushed"
 must "generate in"
 sleep 0.3; send "\x1b"
 EOF
@@ -226,7 +226,7 @@ must "re-encrypted 1 file"
 must "delete the private key file"
 sleep 0.3; send "y"
 must "deleted key vault"
-must "saved + pushed"
+must "pushed"
 must "generate in"
 sleep 0.3; send "\x1b"
 EOF
@@ -240,7 +240,7 @@ exp "storage — plain → template" <<EOF
 spawn casa configs storage .plainrc
 must "executable"; hit " "; hit "\r"
 must "now stored: template"
-must "saved + pushed"
+must "pushed"
 EOF
 [ -f "$CASA_SOURCE/dot_plainrc.tmpl" ] || fail "chattr +template missing"
 
@@ -248,7 +248,7 @@ exp "storage — template → plain" <<EOF
 spawn casa configs storage .plainrc
 must "executable"; hit " "; hit "\r"
 must "now stored plain"
-must "saved + pushed"
+must "pushed"
 EOF
 [ -f "$CASA_SOURCE/dot_plainrc" ] || fail "chattr -template missing"
 
@@ -256,7 +256,7 @@ EOF
 exp "configs edit — exact match, apply, autosave" <<EOF
 spawn casa configs edit .plainrc
 must "edited ~/.plainrc"
-must "saved + pushed"
+must "pushed"
 EOF
 grep -q "e2e-appended-line" "$HOME/.plainrc" || fail "edit did not apply"
 
@@ -277,7 +277,7 @@ must "question to ask"; hit "Favorite tool\r"
 must "yes / no";  hit "\r"
 must "Favorite tool"; hit "helix\r"
 must "use {{ .favtool }}"
-must "saved + pushed"
+must "pushed"
 EOF
 grep -q 'promptStringOnce . "favtool" "Favorite tool"' "$CASA_SOURCE/.casa.toml.tmpl" \
   || fail "question not written to questionnaire"
@@ -287,8 +287,8 @@ chezmoi --source "$CASA_SOURCE" data --format json | grep -q '"favtool": "helix"
 # ---- 11. save / undo / sync ----------------------------------------------------
 step "save"
 printf 'drift\n' >> "$CASA_SOURCE/README.md"
-casa save | grep "saved + pushed" >/dev/null || fail "save"
-casa save | grep "nothing to save" >/dev/null || fail "save clean"
+casa push | grep "pushed" >/dev/null || fail "save"
+casa push | grep "nothing to push" >/dev/null || fail "save clean"
 
 exp "undo — confirm and revert" <<EOF
 spawn casa machine undo
@@ -298,21 +298,21 @@ EOF
 grep -q "drift" "$CASA_SOURCE/README.md" && fail "undo did not revert"
 
 step "sync"
-casa sync | grep "up to date" >/dev/null || fail "sync"
+casa pull | grep "up to date" >/dev/null || fail "sync"
 
 step "sync — pushes unsaved changes first"
 printf '# sync-push-line\n' >> "$CASA_SOURCE/README.md"
 exp "sync with dirty repo offers push" <<EOF
-spawn casa sync
+spawn casa pull
 must "unsaved local changes"
-must "push these as part of the sync?"; hit "\r"
+must "push these first?"; hit "\r"
 must "up to date"
 EOF
 cd "$CASA_SOURCE" && git status --porcelain | grep -q . && fail "sync did not push"; cd - >/dev/null
 
 # ---- 12. status / info / doctor / tools ----------------------------------------
 step "status + info + doctor + tools"
-casa status | grep "unsaved changes:" >/dev/null || fail "status"
+casa status | grep "to push:" >/dev/null || fail "status"
 casa machine info | grep "managed:" >/dev/null || fail "info"
 casa machine doctor >/dev/null 2>&1 || true # informational; exit code varies by env
 casa tools list >/dev/null || fail "tools list"
@@ -329,7 +329,7 @@ must "locally changed"
 must "keep my local version"
 sleep 0.4; send "\r"
 must "recorded your local"
-must "saved + pushed"
+must "pushed"
 must "nothing drifted"
 EOF
 grep -q "locally changed" "$CASA_SOURCE/dot_plainrc" || fail "drift keep did not record local version"

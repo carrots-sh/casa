@@ -151,8 +151,8 @@ See [docs/configs.md](docs/configs.md).
 
 ```bash
 casa machine setup <user>            # provision from <user>/dotfiles
-casa sync                            # upgrade packages, pull, apply
-casa save                            # commit + push (auto-written message)
+casa pull                            # upgrade packages, pull, apply
+casa push                            # commit + push (auto-written message)
 casa machine doctor                  # deps table + chezmoi doctor
 ```
 

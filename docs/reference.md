@@ -27,8 +27,8 @@ The most frequent actions are available without a group prefix:
 | --- | --- |
 | `casa` | Open the interactive menu |
 | `casa edit [name]` | Pick and edit a config (same as `casa configs edit`) |
-| `casa save [msg]` | Commit and push your changes (same as `casa machine save`) |
-| `casa sync` | Upgrade packages, then pull + apply dotfiles (same as `casa machine sync`) |
+| `casa push [msg]` | Commit and push your changes (same as `casa machine save`) |
+| `casa pull` | Upgrade packages, then pull + apply dotfiles (same as `casa machine sync`) |
 | `casa status` | Show what's changed, behind, or outdated (same as `casa machine status`) |
 | `casa upgrade` | Update casa itself to the latest release |
 | `casa help` | Print usage (also `-h`, `--help`) |

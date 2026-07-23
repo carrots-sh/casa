@@ -184,7 +184,7 @@ func Sync() error {
 		for _, t := range targets {
 			fmt.Println("  " + t)
 		}
-		ok, err := ui.ConfirmDefault("push these as part of the sync?", true)
+		ok, err := ui.ConfirmDefault("push these first?", true)
 		if err != nil {
 			return err
 		}
@@ -221,7 +221,7 @@ func Sync() error {
 		_ = runShell("brew", "upgrade")
 		_ = runShell("brew", "cleanup")
 	}
-	fmt.Println("syncing dotfiles...")
+	fmt.Println("pulling dotfiles...")
 	if err := chez.Update(); err != nil {
 		return err
 	}
@@ -243,13 +243,13 @@ func Save(msg string) error {
 	}
 	porcelain, _ := chez.GitOut("status", "--porcelain")
 	if strings.TrimSpace(porcelain) == "" {
-		fmt.Println("nothing to save — everything's already committed.")
+		fmt.Println("nothing to push — everything's already in your repo.")
 		return nil
 	}
 	// Show changes by their readable target paths, not raw source names.
 	sources := changedPaths(porcelain)
 	targets := targetLabels(sources)
-	fmt.Println("changes to save:")
+	fmt.Println("changes to push:")
 	for _, t := range targets {
 		fmt.Println("  " + t)
 	}
@@ -307,11 +307,11 @@ func Status() error {
 	}
 	s := computeStatus()
 	fmt.Printf("machine:           %s\n", s.machine)
-	fmt.Printf("unsaved changes:   %d\n", s.toSave)
-	fmt.Printf("behind your repo:  %d commit(s)\n", s.behind)
+	fmt.Printf("to push:           %d change(s)\n", s.toSave)
+	fmt.Printf("to pull:           %d commit(s)\n", s.behind)
 	fmt.Printf("local drift:       %d file(s) to review (casa files drift)\n", driftCount())
 	if n := pendingScripts(); n > 0 {
-		fmt.Printf("pending scripts:   %d (run on the next casa sync)\n", n)
+		fmt.Printf("pending scripts:   %d (run on the next casa pull)\n", n)
 	}
 	fmt.Printf("outdated tools:    %d\n", outdatedCount())
 	return nil

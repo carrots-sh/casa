@@ -17,7 +17,7 @@ casa tools trust                  # pick which taps update without prompting
 ```
 
 Every command that changes the manifest ends by offering to commit and push
-(see [Machine](machine.md) for `casa save`).
+(see [Machine](machine.md) for `casa push`).
 
 ## The manifest
 
@@ -274,7 +274,7 @@ not casa, put the binary there — asks before deleting the binary itself.
 
 Selecting everything collapses the brew and cask rows into a single
 `brew upgrade`. If nothing is outdated, `update` says so and exits.
-`casa sync` also upgrades packages before pulling and applying — see
+`casa pull` also upgrades packages before pulling and applying — see
 [Machine](machine.md).
 
 ## Import and drift

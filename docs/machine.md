@@ -5,8 +5,8 @@ dotfiles repo, keep it in sync, save changes back, and check its health.
 
 ```console
 $ casa machine setup [repo]     # provision this machine from your dotfiles repo
-$ casa machine sync             # upgrade packages, then pull + apply dotfiles
-$ casa machine save [message]   # commit + push your changes
+$ casa machine pull             # repo → this machine (pushes yours first)
+$ casa machine push [message]   # your changes → repo (commit + push)
 $ casa machine status           # show what's changed, behind, or outdated
 $ casa machine answers [name]   # change this machine's setup answers and re-apply
 $ casa machine question         # add a setup question to your repo
@@ -15,9 +15,8 @@ $ casa machine doctor           # health check
 $ casa machine info             # machine + repo basics
 ```
 
-`casa sync`, `casa save`, and `casa status` are top-level shortcuts for the same
-commands — and since they're really pull and push, `casa pull` and `casa push`
-work as aliases for sync and save.
+`casa pull`, `casa push`, and `casa status` are top-level shortcuts for the same
+commands. `casa sync` and `casa save` still work as legacy aliases.
 
 ## Setup
 
@@ -80,13 +79,13 @@ runs `chezmoi apply`, which writes your dotfiles and executes the generated run
 scripts (package install, key restore). See [tools](tools.md) and
 [secrets](secrets.md).
 
-## Sync
+## Pull
 
 ```console
-$ casa sync
+$ casa pull
 ```
 
-Sync brings the machine fully up to date — in both directions, so every
+Pull brings the machine fully up to date — in both directions, so every
 difference resolves by an explicit choice:
 
 1. **Push:** unsaved local changes are listed and offered as a commit + push
@@ -98,14 +97,14 @@ difference resolves by an explicit choice:
 
 Restart your shell afterwards to pick up changes.
 
-## Save
+## Push
 
 ```console
-$ casa save
-$ casa save "tune tmux keybindings"
+$ casa push
+$ casa push "tune tmux keybindings"
 ```
 
-Save lists pending changes by their readable target paths (`~/.zshrc`, not
+Push lists pending changes by their readable target paths (`~/.zshrc`, not
 `dot_zshrc`), then stages everything, commits, and pushes. If you omit the
 message, casa builds one from the basenames of the changed files:
 
@@ -115,23 +114,23 @@ casa: update .zshrc, .gitconfig, .tmux.conf and 2 more
 ```
 
 If the push fails (offline, no remote access), the commit stays local and casa
-tells you to push later with another save.
+tells you to retry with another `casa push`.
 
 ## Status
 
 ```console
 $ casa status
 machine:           mbp
-unsaved changes:   2
-behind your repo:  1 commit(s)
+to push:           2 change(s)
+to pull:           1 commit(s)
 local drift:       3 file(s) need apply
 outdated tools:    4
 ```
 
 | Line | Source |
 | --- | --- |
-| unsaved changes | uncommitted files in the source repo (`git status`) |
-| behind your repo | commits behind the remote (`git rev-list HEAD..@{u}`) |
+| to push | uncommitted files in the source repo (`git status`) |
+| to pull | commits behind the remote (`git rev-list HEAD..@{u}`) |
 | local drift | managed files that differ from the repo (`chezmoi status`) |
 | outdated tools | outdated packages across managers |
 

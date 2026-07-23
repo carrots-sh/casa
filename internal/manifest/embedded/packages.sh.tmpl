@@ -42,7 +42,7 @@ brewfile=$(cat <<'BREWFILE'
 # apply — warn and keep going; retries happen whenever the list changes.
 printf '%s\n' "$brewfile" | brew bundle --file=- || {
   echo "casa: warning: some packages failed to install (see above)."
-  echo "casa: the rest of your setup continues — fix or remove the failing entries, then casa sync retries."
+  echo "casa: the rest of your setup continues — fix or remove the failing entries, then casa pull retries."
 }
 
 # Uninstall anything installed but no longer declared. brew bundle's uv cleanup

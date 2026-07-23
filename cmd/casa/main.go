@@ -22,7 +22,7 @@ var (
 const usage = `casa — easy chezmoi: manage your configs and tools from one friendly menu
 
 usage: casa [command]           (no command opens the interactive menu)
-shortcuts: casa edit [name] · casa save [msg] · casa sync · casa status
+shortcuts: casa edit [name] · casa push [msg] · casa pull · casa status
            casa cd              open a shell inside your dotfiles repo (exit to return)
            casa upgrade         update casa itself to the latest release
 
@@ -46,8 +46,8 @@ secrets   add [path]            encrypt and start managing a file
           keys                  encryption keys — create, default, delete, doppler
           list                  list encrypted files
 machine   setup [repo]          provision this machine from your dotfiles repo
-          sync                  pull: repo → machine (pushes unsaved changes first)
-          save [message]        push: your changes → repo (commit + push)
+          pull                  repo → this machine (pushes unsaved changes first)
+          push [message]        your changes → repo (commit + push)
           status                show what's changed, behind, or outdated
           answers [name]        change this machine's setup answers and re-apply
           question              add a setup question to your repo
@@ -88,9 +88,9 @@ func dispatch(args []string) error {
 		return nil
 	case "edit":
 		return app.EditConfig(arg(args, 1))
-	case "save", "push": // push: the direction, spelled out
+	case "push", "save": // save: legacy alias
 		return app.Save(arg(args, 1))
-	case "sync", "pull": // pull: ditto (sync pushes unsaved changes first)
+	case "pull", "sync": // sync: legacy alias (pull pushes unsaved changes first)
 		return app.Sync()
 	case "status":
 		return app.Status()
@@ -145,9 +145,9 @@ func dispatch(args []string) error {
 		switch arg(args, 1) {
 		case "setup":
 			return app.Setup(arg(args, 2))
-		case "sync":
+		case "pull", "sync": // sync: legacy alias
 			return app.Sync()
-		case "save":
+		case "push", "save": // save: legacy alias
 			return app.Save(arg(args, 2))
 		case "status":
 			return app.Status()

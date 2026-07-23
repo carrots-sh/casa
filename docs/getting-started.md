@@ -135,7 +135,7 @@ Every future `casa machine setup` asks this question during provisioning.
 Most actions offer to commit as you go. To commit and push everything pending:
 
 ```console
-$ casa save
+$ casa push
 ```
 
 With no message, casa builds one from the changed files and shows the changes by their real paths (`~/.zshrc`, not source names) before committing.
