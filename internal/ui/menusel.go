@@ -109,6 +109,9 @@ func (m *menuSel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.back = true
 		return m, tea.Quit
 	case "enter":
+		if len(m.visible) == 0 {
+			return m, nil // nothing matched — not an exit
+		}
 		m.done = true
 		return m, tea.Quit
 	case "up", "ctrl+p":
@@ -132,6 +135,9 @@ func (m *menuSel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.filter = m.filter[:len(m.filter)-1]
 			m.refilter()
 		}
+	case "space", " ": // bubbletea v2 names the key "space"
+		m.filter += " "
+		m.refilter()
 	default:
 		if r := []rune(s); len(r) == 1 && r[0] >= ' ' && r[0] != 0x7f {
 			m.filter += s
