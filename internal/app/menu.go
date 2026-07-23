@@ -105,28 +105,19 @@ func Menu() error {
 			}},
 		}
 
-		var labels []string
-		run := map[string]func() error{}
-		paged := map[string]bool{}
-		byName := map[string]string{}
+		var rows []ui.MenuRow
+		var actions []item
+		byName := map[string]int{}
 		for _, sec := range sections {
 			for _, it := range sec.items {
-				// section on every row, not just the cluster's first — filtered
-				// views keep their context, and typing a section name filters to it
-				label := fmt.Sprintf("%-8s  %-12s", sec.name, it.name)
-				if it.desc != "" {
-					label += " · " + it.desc
-				}
-				label += it.hint
-				labels = append(labels, label)
-				run[label] = it.run
-				paged[label] = it.paged
-				byName[it.name] = label
+				rows = append(rows, ui.MenuRow{Section: sec.name, Name: it.name, Desc: it.desc, Hint: it.hint})
+				actions = append(actions, it)
+				byName[it.name] = len(rows) - 1
 			}
 		}
 
 		// urgency: the cursor starts on the most pressing action (order intact).
-		def := ""
+		def := 0
 		switch {
 		case s.toSave > 0:
 			def = byName["push"]
@@ -137,17 +128,15 @@ func Menu() error {
 		}
 
 		clearScreen()
-		choice, err := ui.SelectDefault("casa · "+s.machine, labels, def)
-		if err != nil || choice == "" || choice == byName["quit"] {
+		idx, err := ui.Menu("casa · "+s.machine, rows, def)
+		if err != nil || idx < 0 || actions[idx].run == nil {
 			return err
 		}
-		if action := run[choice]; action != nil {
-			clearScreen()
-			err := action()
-			report(err)
-			if !paged[choice] || err != nil {
-				pause()
-			}
+		clearScreen()
+		aerr := actions[idx].run()
+		report(aerr)
+		if !actions[idx].paged || aerr != nil {
+			pause()
 		}
 	}
 }

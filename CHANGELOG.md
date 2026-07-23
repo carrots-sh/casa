@@ -4,6 +4,13 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.16.1
+
+- The menu got its own fzf-style widget: sections render once per cluster
+  (no repeated gutter labels), and when you filter, each visible group still
+  shows which section it belongs to — the gutter is computed per visible
+  row, not baked into the text. Sizes itself to the terminal.
+
 ## 0.16.0
 
 - `tools trust` covers every tap now: custom-URL taps declared as raw
