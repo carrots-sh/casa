@@ -160,6 +160,19 @@ See [docs/machine.md](docs/machine.md) and
 [docs/getting-started.md](docs/getting-started.md) for the fresh-VPS
 walkthrough.
 
+## Agent skill
+
+Teach your coding agent to drive casa (Claude Code, Cursor, Codex, and
+~50 others auto-detected):
+
+```bash
+bunx skills add carrots-sh/casa
+```
+
+The skill ([skills/casa/SKILL.md](skills/casa/SKILL.md)) covers the
+repo-as-source-of-truth model, the agent-safe command forms, and the
+guardrails (no Brewfiles, no chezmoi-named commits, secrets stay human).
+
 ## Documentation
 
 Full documentation lives in [docs/](docs/):
