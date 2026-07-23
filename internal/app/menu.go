@@ -110,12 +110,10 @@ func Menu() error {
 		paged := map[string]bool{}
 		byName := map[string]string{}
 		for _, sec := range sections {
-			for i, it := range sec.items {
-				gutter := ""
-				if i == 0 {
-					gutter = sec.name
-				}
-				label := fmt.Sprintf("%-8s  %-12s", gutter, it.name)
+			for _, it := range sec.items {
+				// section on every row, not just the cluster's first — filtered
+				// views keep their context, and typing a section name filters to it
+				label := fmt.Sprintf("%-8s  %-12s", sec.name, it.name)
 				if it.desc != "" {
 					label += " · " + it.desc
 				}

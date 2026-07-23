@@ -4,6 +4,12 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.15.1
+
+- Menu rows carry their section name on every row, not just the cluster's
+  first — filtering keeps each action's context (filtering "add" shows which
+  add is files/tools/secrets), and typing a section name filters to it.
+
 ## 0.15.0
 
 - The actions ARE the directions now: `push` and `pull` replace save and
