@@ -4,6 +4,12 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.14.1
+
+- The direction is in the copy now: the menu shows save as
+  "push · your changes → repo" and sync as "pull · repo → this machine
+  (pushes yours first)", and `casa push` / `casa pull` work as aliases.
+
 ## 0.14.0
 
 - `casa sync` is bidirectional now: unsaved local changes are shown and

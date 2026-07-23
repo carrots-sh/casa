@@ -46,8 +46,8 @@ secrets   add [path]            encrypt and start managing a file
           keys                  encryption keys — create, default, delete, doppler
           list                  list encrypted files
 machine   setup [repo]          provision this machine from your dotfiles repo
-          sync                  upgrade packages, then pull + apply dotfiles
-          save [message]        commit + push your changes
+          sync                  pull: repo → machine (pushes unsaved changes first)
+          save [message]        push: your changes → repo (commit + push)
           status                show what's changed, behind, or outdated
           answers [name]        change this machine's setup answers and re-apply
           question              add a setup question to your repo
@@ -88,9 +88,9 @@ func dispatch(args []string) error {
 		return nil
 	case "edit":
 		return app.EditConfig(arg(args, 1))
-	case "save":
+	case "save", "push": // push: the direction, spelled out
 		return app.Save(arg(args, 1))
-	case "sync":
+	case "sync", "pull": // pull: ditto (sync pushes unsaved changes first)
 		return app.Sync()
 	case "status":
 		return app.Status()

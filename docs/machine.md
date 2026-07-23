@@ -16,7 +16,8 @@ $ casa machine info             # machine + repo basics
 ```
 
 `casa sync`, `casa save`, and `casa status` are top-level shortcuts for the same
-commands.
+commands — and since they're really pull and push, `casa pull` and `casa push`
+work as aliases for sync and save.
 
 ## Setup
 

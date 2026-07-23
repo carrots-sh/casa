@@ -72,8 +72,8 @@ also top-level shortcuts:
 
 ```bash
 casa edit [name]     # pick and edit a config
-casa save [msg]      # commit + push your changes
-casa sync            # upgrade packages, then pull + apply dotfiles
+casa save [msg]      # push: your changes → repo (alias: casa push)
+casa sync            # pull: repo → this machine, pushing yours first (alias: casa pull)
 casa status          # what's changed, behind, or outdated
 ```
 

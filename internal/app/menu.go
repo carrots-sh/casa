@@ -89,8 +89,8 @@ func Menu() error {
 				{"remove", "stop managing a secret", "", func() error { return RemoveSecret() }, false},
 			}},
 			{"machine", []item{
-				{"save", "publish your changes", hint(s.toSave, "to save"), func() error { return Save("") }, false},
-				{"sync", "update this machine", hint(s.behind, "behind"), func() error { return Sync() }, false},
+				{"save", "push · your changes → repo", hint(s.toSave, "to push"), func() error { return Save("") }, false},
+				{"sync", "pull · repo → this machine (pushes yours first)", hint(s.behind, "behind"), func() error { return Sync() }, false},
 				{"status", "full overview", "", func() error { return Status() }, false},
 				{"answers", "your setup answers", "", func() error { return Answers("") }, false},
 				{"question", "add a setup question", "", func() error { return AddQuestion() }, false},
