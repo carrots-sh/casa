@@ -4,6 +4,19 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.16.0
+
+- `tools trust` covers every tap now: custom-URL taps declared as raw
+  `extra` lines (like sst/tap) appear in the picker, and toggling them
+  rewrites the line's `trusted: true` flag in place.
+- Trust reaches brew's machine-level store too: the trust picker syncs
+  `brew trust`/`brew untrust` for this machine, and the generated packages
+  script converges trusted taps on every apply — so plain `brew upgrade`
+  stops warning, not just bundle runs, on every machine.
+- Update menu: self-updating sh tools (bun) are labeled
+  "self-update (freshness unknown)" — they always appear because casa
+  can't ask a self-updater whether it's outdated.
+
 ## 0.15.1
 
 - Menu rows carry their section name on every row, not just the cluster's

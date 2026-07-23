@@ -19,6 +19,11 @@ fi
 {{ end }}{{ end -}}
 command -v brew >/dev/null 2>&1 || { echo "casa: brew not found; skipping packages"; exit 0; }
 
+# Machine-level tap trust (brew's own trust.json) — the Brewfile directive
+# only covers bundle runs; this keeps plain brew install/upgrade quiet too.
+# Older brews without `brew trust` just error, which is ignored.
+{{ range index .packages "taps_trusted" }}brew trust "{{ . }}" >/dev/null 2>&1 || true
+{{ end -}}
 brewfile=$(cat <<'BREWFILE'
 {{ range index .packages "taps" }}tap "{{ . }}"
 {{ end }}{{ range index .packages "taps_trusted" }}tap "{{ . }}", trusted: true

@@ -201,7 +201,8 @@ func updatableItems() ([]string, map[string]string) {
 	for _, t := range shTools {
 		if t.Update != "" {
 			shUpdates[t.Bin] = t.Update
-			items = append(items, "sh     "+t.Bin)
+			// self-updaters can't report freshness — offered always, labeled so
+			items = append(items, "sh     "+t.Bin+"   · self-update (freshness unknown)")
 		}
 	}
 	return items, shUpdates

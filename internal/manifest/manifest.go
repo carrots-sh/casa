@@ -313,3 +313,57 @@ func splice(lines []string, i, del int, ins ...string) []string {
 	out = append(out, ins...)
 	return append(out, lines[i+del:]...)
 }
+
+// ExtraTap is a tap declared as a raw extra/extra_darwin line — the only way
+// to express a custom clone URL.
+type ExtraTap struct {
+	Name    string
+	Trusted bool
+}
+
+var extraTapLine = regexp.MustCompile(`^tap "([^"]+)"`)
+
+// ExtraTaps parses tap directives out of the raw extra sections.
+func (m Manifest) ExtraTaps() []ExtraTap {
+	var out []ExtraTap
+	for _, sec := range []string{"extra", "extra_darwin"} {
+		lines, _ := m.List(sec)
+		for _, l := range lines {
+			if mm := extraTapLine.FindStringSubmatch(strings.TrimSpace(l)); mm != nil {
+				out = append(out, ExtraTap{mm[1], strings.Contains(l, "trusted: true")})
+			}
+		}
+	}
+	return out
+}
+
+// SetExtraTapTrust flips `trusted: true` on the raw extra line declaring tap
+// name. Extra entries are single-quoted TOML strings ('tap "x", "url"',) —
+// the flag is inserted before the closing quote.
+func (m Manifest) SetExtraTapTrust(name string, trusted bool) error {
+	data, err := os.ReadFile(m.Path)
+	if err != nil {
+		return err
+	}
+	lines := strings.Split(string(data), "\n")
+	needle := `tap "` + name + `"`
+	for i, l := range lines {
+		if !strings.Contains(l, needle) {
+			continue
+		}
+		if trusted == strings.Contains(l, "trusted: true") {
+			return nil
+		}
+		if trusted {
+			j := strings.LastIndex(l, "'")
+			if j <= 0 {
+				return fmt.Errorf("unrecognized extra tap line for %q", name)
+			}
+			lines[i] = l[:j] + ", trusted: true" + l[j:]
+		} else {
+			lines[i] = strings.Replace(l, ", trusted: true", "", 1)
+		}
+		return m.write(lines)
+	}
+	return fmt.Errorf("no extra tap line for %q", name)
+}
