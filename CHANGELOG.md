@@ -4,6 +4,13 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.14.0
+
+- `casa sync` is bidirectional now: unsaved local changes are shown and
+  offered as a push first, and files changed outside casa get a
+  keep-or-restore review before the pull applies over them — the direction
+  of every difference is an explicit choice, never an accident.
+
 ## 0.13.2
 
 - A failing install no longer aborts the whole apply (found on a real fresh

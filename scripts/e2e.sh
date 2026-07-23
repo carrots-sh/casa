@@ -300,6 +300,16 @@ grep -q "drift" "$CASA_SOURCE/README.md" && fail "undo did not revert"
 step "sync"
 casa sync | grep "up to date" >/dev/null || fail "sync"
 
+step "sync — pushes unsaved changes first"
+printf '# sync-push-line\n' >> "$CASA_SOURCE/README.md"
+exp "sync with dirty repo offers push" <<EOF
+spawn casa sync
+must "unsaved local changes"
+must "push these as part of the sync?"; hit "\r"
+must "up to date"
+EOF
+cd "$CASA_SOURCE" && git status --porcelain | grep -q . && fail "sync did not push"; cd - >/dev/null
+
 # ---- 12. status / info / doctor / tools ----------------------------------------
 step "status + info + doctor + tools"
 casa status | grep "unsaved changes:" >/dev/null || fail "status"

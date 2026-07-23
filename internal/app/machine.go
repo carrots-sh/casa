@@ -170,11 +170,50 @@ func Cd() error {
 	return nil
 }
 
-// Sync brings this machine fully up to date: upgrade packages, then pull the
-// repo and apply it here. (Replaces the old `sysupdate` shell function.)
+// Sync brings this machine fully up to date, both directions: push unsaved
+// local changes (with consent), surface drift so the user picks a side, then
+// upgrade packages and pull + apply the repo.
 func Sync() error {
 	if err := requireChezmoi(); err != nil {
 		return err
+	}
+	// Push side first — local edits leave by intent, never by accident.
+	if porcelain, _ := chez.GitOut("status", "--porcelain"); strings.TrimSpace(porcelain) != "" {
+		targets := targetLabels(changedPaths(porcelain))
+		fmt.Println("unsaved local changes:")
+		for _, t := range targets {
+			fmt.Println("  " + t)
+		}
+		ok, err := ui.ConfirmDefault("push these as part of the sync?", true)
+		if err != nil {
+			return err
+		}
+		if ok {
+			msg := autoMessageFrom(targets)
+			fmt.Println("committing: " + msg)
+			if err := saveAll(msg); err != nil {
+				return err
+			}
+		} else {
+			fmt.Println("leaving them uncommitted")
+		}
+	}
+	// Drift next — decide keep-or-restore per file before the pull applies
+	// over it (skipped files fall back to chezmoi's own per-file prompt).
+	if files, _, _ := driftedTargets(); len(files) > 0 {
+		fmt.Printf("%d file(s) changed outside casa:\n", len(files))
+		for _, f := range files {
+			fmt.Println("  " + home.Tilde(f))
+		}
+		ok, err := ui.ConfirmDefault("review them now? (keep my version / restore the repo's)", true)
+		if err != nil {
+			return err
+		}
+		if ok {
+			if err := Drift(); err != nil {
+				return err
+			}
+		}
 	}
 	if _, err := exec.LookPath("brew"); err == nil {
 		fmt.Println("upgrading packages...")

@@ -85,10 +85,17 @@ scripts (package install, key restore). See [tools](tools.md) and
 $ casa sync
 ```
 
-Sync brings the machine fully up to date. When brew is installed it first runs
-`brew update`, `brew upgrade`, and `brew cleanup`, then pulls the repo and
-applies it (`chezmoi update`). Restart your shell afterwards to pick up
-changes.
+Sync brings the machine fully up to date — in both directions, so every
+difference resolves by an explicit choice:
+
+1. **Push:** unsaved local changes are listed and offered as a commit + push
+   first (decline to leave them uncommitted).
+2. **Drift:** files changed outside casa get the keep-or-restore review
+   (the same one as `casa files drift`) before the pull can apply over them.
+3. **Pull:** when brew is installed, `brew update` / `upgrade` / `cleanup`
+   run, then the repo is pulled and applied (`chezmoi update`).
+
+Restart your shell afterwards to pick up changes.
 
 ## Save
 
