@@ -1,12 +1,12 @@
 # Design
 
-casa is an interactive front-end for [chezmoi](https://www.chezmoi.io/). This page explains the architecture and the reasoning behind its main decisions.
+casa manages your machines — files, tools, and secrets — from one git repo, with two verbs: push and pull. This page explains the architecture and the reasoning behind its main decisions.
 
-## Never reimplement the underlying tool
+## Never reimplement the engine
 
-casa shells out to chezmoi for every state operation; it never reimplements chezmoi behavior. `internal/chez` is a thin wrapper: each function builds a `chezmoi --source <dir> ...` command and streams it to the terminal. The user's repo stays the source of truth, and anything chezmoi can do remains available by dropping to `chezmoi` directly.
+Under the hood, [chezmoi](https://www.chezmoi.io/) renders and applies your files. casa shells out to it for every state operation and never reimplements its behavior. `internal/chez` is a thin wrapper: each function builds a `chezmoi --source <dir> ...` command and streams it to the terminal. The user's repo stays the source of truth — and stays a valid chezmoi repo, so anything chezmoi can do remains available by dropping to `chezmoi` directly, and you can leave casa at any time and keep everything.
 
-The same rule applies to packages. casa does not track install state or compute diffs itself — it renders the manifest into a Brewfile and pipes it to `brew bundle --file=-`, then `brew bundle cleanup --force --file=-`. Homebrew does the diffing: whatever is installed but no longer declared gets uninstalled. casa's job is to keep one manifest honest, not to be a package manager.
+The same rule applies to packages. casa does not track install state or compute diffs itself — it renders the manifest to Brewfile-format text and pipes it to `brew bundle --file=-`, then `brew bundle cleanup --force --file=-`. No Brewfile ever exists on disk. Homebrew does the diffing: whatever is installed but no longer declared gets uninstalled. casa's job is to keep one manifest honest, not to be a package manager.
 
 The source directory defaults to `~/.local/share/casa` (override with `CASA_SOURCE`). For backward compatibility, if that directory is not a repo but chezmoi already has a configured source, casa uses it — an existing chezmoi setup works unchanged.
 
@@ -16,7 +16,7 @@ Tool state lives in a single committed file, `.casadata/packages.toml`. The scri
 
 This split exists because committed scripts go stale. A script committed a year ago encodes the behavior of the casa that wrote it; every machine that clones the repo replays that old behavior, and fixing a bug means touching every repo. With generated scripts, behavior always matches the *installed* casa version: upgrade casa, and the next `apply` runs the current logic on every machine. Repos carry only data.
 
-The generated scripts are chezmoi `run_onchange` scripts, so they re-run on `apply` exactly when the rendered package list changes. The package script includes an empty-manifest guard — `brew bundle cleanup --force` against an empty Brewfile would uninstall everything, so an empty render skips the run entirely.
+The generated scripts are chezmoi `run_onchange` scripts, so they re-run on `apply` exactly when the rendered package list changes. The package script includes an empty-manifest guard — `brew bundle cleanup --force` against an empty package list would uninstall everything, so an empty render skips the run entirely.
 
 See [tools](tools.md) for the manifest format.
 

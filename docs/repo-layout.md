@@ -1,9 +1,13 @@
 # Repository layout
 
-A casa repo is a chezmoi source directory. Everything chezmoi understands works
-unchanged; casa adds a naming convention for the special files, a package
-manifest, and optional key backups. This page maps out what gets committed,
-what casa generates locally, and what never leaves the machine.
+One git repo holds everything casa manages: your files, one package manifest,
+and your secrets. This page maps out what gets committed, what casa generates
+locally, and what never leaves the machine.
+
+Under the hood, chezmoi renders and applies your files, so the repo is also a
+valid chezmoi source directory — everything chezmoi understands works
+unchanged. casa adds a naming convention for the special files, the package
+manifest, and optional sealed key backups.
 
 By default the repo lives at `~/.local/share/casa` (override with
 `$CASA_SOURCE`; existing `~/.local/share/chezmoi` setups are picked up
@@ -122,7 +126,8 @@ Nothing key-related is ever committed in identifiable form. Each machine keeps:
 
 ## Compatibility with bare chezmoi
 
-The repo is a valid chezmoi repo; casa is a front-end, not a format.
+The repo stays a valid chezmoi repo — repos carry only data, never casa-specific
+machinery. You can leave casa at any time and keep everything.
 
 Works with plain `chezmoi` immediately, on a clone where casa has run at least
 once:

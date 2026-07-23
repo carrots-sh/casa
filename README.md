@@ -3,22 +3,31 @@
 [![Release](https://img.shields.io/github/v/release/carrots-sh/casa)](https://github.com/carrots-sh/casa/releases)
 [![License](https://img.shields.io/github/license/carrots-sh/casa)](LICENSE)
 
-An interactive front-end for [chezmoi](https://chezmoi.io). Your dotfiles,
-tools, and secrets — one friendly menu, nothing to memorize.
+**make any machine feel like home.**
 
-casa never reimplements chezmoi; it shells out to it, so your dotfiles repo
-stays a plain chezmoi repo you own.
+casa manages your machines — files, tools, and secrets — from one git repo,
+with two verbs: push and pull.
+
+casa is a machine manager for developers who work across more than one Mac or
+Linux box. One git repo holds your dotfiles. One manifest declares every
+package — brew, distro, go, uv, npm, bun, cargo. Your secrets travel
+age-encrypted, with keys that never touch a repo. It converges instead of
+accumulates: `casa pull` pushes your changes first, reviews drift, upgrades
+packages, and actually uninstalls whatever you removed from the manifest. A
+fresh machine is one curl away from being yours.
 
 ## Highlights
 
-- 🏠 **One menu for everything**: edit configs, install tools, manage secrets,
-  sync machines — grouped, filterable, single keypress each.
+- 🏠 **One menu for everything**: edit files, install tools, manage secrets,
+  push and pull machines — grouped, filterable, single keypress each.
 - 📦 **One package manifest**: everything you install lands in
-  `.casadata/packages.toml`; every machine converges on it via `chezmoi apply`
+  `.casadata/packages.toml`; every machine converges on it with `casa pull`
   (brew, casks, taps, `go`, `uv`, `npm`, `bun`, `cargo`, and `curl | sh` installers).
 - 📋 **Paste any install command**: `go install …`, `cargo install …`,
   `bun add -g …`, `curl … | sh` — casa detects the manager and records it.
   Install directly in your terminal and casa notices the drift.
+- 🔁 **Converges instead of accumulates**: remove an entry from the manifest
+  and the next `pull` uninstalls it. No Brewfile, no leftovers.
 - 🔐 **Encryption with zero key metadata in the repo**: keys are files in
   `~/.config/casa/keys/`; recipients are derived, never stored. Multiple keys,
   per-file choice, safe deletion with orphan re-encryption, passphrase-sealed
@@ -26,15 +35,15 @@ stays a plain chezmoi repo you own.
 - 🧰 **Repos carry data, casa carries behavior**: the run scripts that install
   packages and restore keys are generated from the casa you're running —
   they never live in (or go stale in) your repo.
-- 🖥️ **Fresh machines from nothing**: one command installs chezmoi, Homebrew,
-  your key, and every tool — a passphrase is all you carry.
+- 🖥️ **Fresh machines from nothing**: one command installs Homebrew if needed,
+  casa, your keys, and every tool — a passphrase is all you carry.
 - ⌨️ **Consistent controls**: type to filter, `tab` select, `enter` submit,
   `esc`/`←` back. Paths shown as `~/…` everywhere.
 
 ## Installation
 
 One line on a brand-new machine (installs Homebrew if needed, installs casa,
-and sets everything up from your dotfiles):
+then runs `casa machine setup` against your repo):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/carrots-sh/casa/main/install.sh | sh -s -- <your-github-username>
@@ -61,9 +70,8 @@ casa
 ```
 
 On a machine with nothing set up, that single command walks you through
-everything: installing chezmoi, cloning your repo (or starting one), your
-setup questions, Homebrew, and key restore. On a working machine it opens the
-menu:
+everything: installing dependencies, cloning your repo (or starting one), your
+setup questions, and key restore. On a working machine it opens the menu:
 
 ```
 casa · your-machine
@@ -71,6 +79,7 @@ casa · your-machine
 files     edit         · pick + edit a file — encrypted handled
           list         · managed files
           add          · start managing a file
+          drift        · review local differences
           storage      · how a file is stored
           remove       · stop managing a file
 tools     add          · install a tool (search or paste)
@@ -78,8 +87,8 @@ tools     add          · install a tool (search or paste)
           update       · upgrade outdated tools   (3 updates)
           import       · record what's installed here
 secrets   edit · list · add · keys · remove
-machine   save         · publish your changes     (2 to save)
-          sync         · update this machine
+machine   push         · publish your changes     (2 to push)
+          pull         · update this machine
           status · answers · question · undo · setup · doctor · info
 casa      upgrade · quit
 ```
@@ -91,21 +100,24 @@ thing in every cluster — no synonym verbs to learn (tracking a file is just
 Everything in the menu is also a typed command:
 
 ```
-casa files    edit [name] | add [path] | storage [name] | remove [path] | list
-casa tools    add [mgr] [name] | add sh | add cmd ["command"] | remove | update | list | import | trust
-casa secrets  add [path] | edit [name] | remove | keys | list
-casa machine  setup [repo] | sync | save [msg] | status | answers [name] | question | doctor | info
+usage: casa [command]           (no command opens the interactive menu)
+shortcuts: casa edit [name] · casa push [msg] · casa pull · casa status
+           casa cd · casa upgrade
+files:   edit [name] · add [path] · drift · storage [name] · remove [path] · list
+tools:   add [manager] [name] · add sh · add cmd ["command"] · remove · update · list · import · trust
+secrets: add [path] · edit [name] · remove · keys · list
+machine: setup [repo] · pull · push [message] · status · answers [name] · question · undo · doctor · info
 ```
 
-(`configs`/`track`/`untrack`/`rm` still work as legacy aliases.)
+(`save`/`sync`/`configs`/`track`/`untrack`/`rm` still work as legacy aliases.)
 
 ## Features
 
 ### Tools
 
 Every tool you install through casa is recorded in one hand-editable manifest;
-`chezmoi apply` converges any machine onto it (installs what's missing,
-removes what you deleted). Search across managers, paste a full install
+`casa pull` converges any machine onto it (installs what's missing,
+uninstalls what you deleted). Search across managers, paste a full install
 command, or record a `curl | sh` installer with its own update command:
 
 ```bash
@@ -132,7 +144,7 @@ casa secrets keys                    # create · default · backup · delete · 
 
 See [docs/secrets.md](docs/secrets.md).
 
-### Configs & templates
+### Files & templates
 
 Track a file and casa asks how to store it — plain, template (per-machine
 values auto-substituted), encrypted, or both — with sensible defaults
@@ -140,7 +152,7 @@ detected from the file itself. Your repo's setup questions are asked in casa's
 UI and become `{{ .variables }}` usable in any template:
 
 ```bash
-casa configs track ~/.gitconfig      # heuristics suggest template (it has your email)
+casa files add ~/.gitconfig          # heuristics suggest template (it has your email)
 casa machine question                # add a setup question, use {{ .key }} anywhere
 casa machine answers                 # change an answer, re-render this machine
 ```
@@ -151,7 +163,7 @@ See [docs/configs.md](docs/configs.md).
 
 ```bash
 casa machine setup <user>            # provision from <user>/dotfiles
-casa pull                            # upgrade packages, pull, apply
+casa pull                            # push yours, review drift, upgrade, apply
 casa push                            # commit + push (auto-written message)
 casa machine doctor                  # deps table + chezmoi doctor
 ```
@@ -169,9 +181,11 @@ Teach your coding agent to drive casa (Claude Code, Cursor, Codex, and
 bunx skills add carrots-sh/casa
 ```
 
-The skill ([skills/casa/SKILL.md](skills/casa/SKILL.md)) covers the
-repo-as-source-of-truth model, the agent-safe command forms, and the
-guardrails (no Brewfiles, no chezmoi-named commits, secrets stay human).
+That installs the whole suite from [skills/](skills/): **casa** (the mental
+model, agent-safe flows, and routing) plus deep-dive skills for each domain —
+**casa-files**, **casa-tools**, **casa-secrets**, and **casa-machine** — with
+exact non-interactive command forms and the guardrails (no Brewfiles, no
+chezmoi-named commits, secrets stay human).
 
 ## Documentation
 
@@ -188,15 +202,16 @@ Full documentation lives in [docs/](docs/):
 
 ## Design
 
+- Under the hood, [chezmoi](https://chezmoi.io) renders and applies your
+  files — and your repo stays a valid chezmoi repo, so you can leave casa at
+  any time and keep everything.
 - Repos commit **casa-named** special files (`.casa.toml.tmpl`, `.casaignore`,
   `.casadata/`); casa maintains gitignored symlinks to the names chezmoi
   expects, self-healing before every chezmoi call.
 - Repos carry **only data**. The run scripts that turn the manifest into
   installs are generated from the installed casa's templates — behavior
   always matches your casa version.
-- Your repo remains a working chezmoi repo: files, templates, and encryption
-  are all native chezmoi. See [docs/design.md](docs/design.md) for the
-  trade-offs, honestly stated.
+- See [docs/design.md](docs/design.md) for the trade-offs, honestly stated.
 
 ## Versioning
 

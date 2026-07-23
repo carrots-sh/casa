@@ -1,6 +1,6 @@
 # Getting started
 
-casa is an interactive front-end for [chezmoi](https://www.chezmoi.io/). It shells out to chezmoi for every operation — your dotfiles repo stays a normal chezmoi repo — and adds a menu, package management, and registry-free encryption keys on top.
+casa makes any machine feel like home. It manages your machines — files, tools, and secrets — from one git repo, with two verbs: push and pull. One repo holds your dotfiles, one manifest declares every package, and your secrets travel age-encrypted, with keys that never touch a repo.
 
 There are three ways to start, depending on where you are today:
 
@@ -46,13 +46,13 @@ setting up this machine from git@github.com:you/dotfiles.git
 
 An empty repo has no setup questions and no packages, so setup finishes immediately with `applying your dotfiles...`. Everything else is created lazily, the first time you use each feature.
 
-### Track your first config
+### Add your first file
 
 ```console
-$ casa configs track ~/.zshrc
+$ casa files add ~/.zshrc
 ```
 
-casa suggests common files, completes paths as you type, and asks how to store the file — plain, template, encrypted, or encrypted template — with a sensible default based on the file. See [configs](configs.md).
+casa suggests common files, completes paths as you type, and asks how to store the file — plain, template, encrypted, or encrypted template — with a sensible default based on the file. See [files](configs.md).
 
 ### Add your first tool
 
@@ -78,7 +78,7 @@ Accept and casa scans brew, cask, go, uv, npm, bun, and cargo, and records every
 
 ### Add your first secret
 
-Encryption requires `age` (`brew install age` — or just `casa tools add age`). Then:
+Encryption requires `age` (`brew install age` — or just `casa tools add brew age`). Then:
 
 ```console
 $ casa secrets add ~/.netrc
@@ -130,7 +130,7 @@ List kinds also ask for `choices (comma-separated)`. casa writes the question in
 
 Every future `casa machine setup` asks this question during provisioning.
 
-### Save
+### Push
 
 Most actions offer to commit as you go. To commit and push everything pending:
 
@@ -139,6 +139,8 @@ $ casa push
 ```
 
 With no message, casa builds one from the changed files and shows the changes by their real paths (`~/.zshrc`, not source names) before committing.
+
+On your other machines, `casa pull` brings it all down — it pushes your local changes first, reviews drift, upgrades packages, and applies. Removing a tool from the manifest uninstalls it on the next pull: casa converges instead of accumulates.
 
 ## Setting up a new machine
 
@@ -223,7 +225,7 @@ For unattended provisioning, `CASA_YES=1` answers yes to every confirmation prom
 
 ## Adopting casa in an existing chezmoi repo
 
-casa is backward-compatible with a plain chezmoi setup. Nothing is renamed and nothing is required of your repo.
+Under the hood, chezmoi renders and applies your files — and your repo stays a valid chezmoi repo, so you can leave casa at any time and keep everything. The reverse also holds: casa is backward-compatible with a plain chezmoi setup. Nothing is renamed and nothing is required of your repo.
 
 ### Point casa at your repo
 

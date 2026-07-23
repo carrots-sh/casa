@@ -1,20 +1,22 @@
-# Configs
+# Files
 
-Configs are the files casa manages for you: shell rc files, git config, editor settings, anything under `$HOME`. casa is a front-end for chezmoi, so every operation here maps to a native chezmoi command — `add`, `edit`, `chattr`, `forget` — with casa choosing sensible defaults and handling encryption transparently.
+Files are the first of the three things casa manages from your repo: shell rc files, git config, editor settings, anything under `$HOME`. Under the hood, chezmoi renders and applies them — every operation here maps to a native chezmoi command (`add`, `edit`, `chattr`, `forget`), with casa choosing sensible defaults and handling encryption transparently. Your repo stays a valid chezmoi repo throughout.
 
 Paths are shown with `~/` everywhere.
 
 ```console
-$ casa configs list
+$ casa files list
 ~/.zshrc
 ~/.gitconfig  (template)
 ~/.config/secret.env  (encrypted)
 ```
 
-## Tracking a file
+The legacy spellings `configs`, `track`, and `untrack` still work as aliases for `files`, `add`, and `remove`.
+
+## Adding a file
 
 ```console
-$ casa configs track ~/.zshrc
+$ casa files add ~/.zshrc
 ```
 
 With a path, casa starts managing that file directly. Without one, it opens an adopt picker:
@@ -51,7 +53,7 @@ Choosing `template` runs `chezmoi add --autotemplate`: chezmoi scans the file an
     email = {{ .email }}
 ```
 
-On every machine, `apply` renders the template with that machine's data, so one source file produces the right output everywhere. You can use `{{ .var }}` for any data value in any templated file — chezmoi does all the rendering, casa never reimplements template semantics.
+On every machine, applying renders the template with that machine's data, so one source file produces the right output everywhere. You can use `{{ .var }}` for any data value in any templated file — chezmoi does all the rendering, casa never reimplements template semantics.
 
 ### Setup questions as template data
 
@@ -66,41 +68,41 @@ You pick a data key, the question text, and an answer kind (text, yes/no, one of
 ## Changing storage
 
 ```console
-$ casa configs storage gitconfig
+$ casa files storage gitconfig
 ```
 
-Storage is not fixed at track time. `storage` shows the file's current attributes preselected in a multi-select — `template`, `encrypted`, `private`, `executable` — and applies whatever you toggle via `chezmoi chattr`. Turning everything off stores the file plain.
+Storage is not fixed at add time. `storage` shows the file's current attributes preselected in a multi-select — `template`, `encrypted`, `private`, `executable` — and applies whatever you toggle via `chezmoi chattr`. Turning everything off stores the file plain.
 
 Attributes are read from the chezmoi source filename (the `encrypted_`/`private_`/`executable_` prefixes and `.tmpl` suffix), so what you see always matches what's in the repo.
 
 ## Editing
 
 ```console
-$ casa configs edit zshrc
+$ casa files edit zshrc
 $ casa edit zshrc          # top-level shortcut
 ```
 
-`edit` opens the managed file's source in your editor and applies the result (`chezmoi edit --apply`). Encrypted files are handled transparently: decrypted for editing, re-encrypted on save. After an edit, casa offers to commit and push.
+`edit` opens the managed file's source in your editor and applies the result (`chezmoi edit --apply`). Encrypted files are handled transparently: decrypted for editing, re-encrypted on save. After an edit, casa offers to push.
 
-## Untracking
+## Removing
 
 ```console
-$ casa configs untrack ~/.vimrc
+$ casa files remove ~/.vimrc
 ```
 
-`untrack` stops managing a file (`chezmoi forget --force`) but keeps it on disk untouched. Pass a path, a name to match against managed files, or nothing to pick from a list.
+`remove` stops managing a file (`chezmoi forget --force`) but keeps it on disk untouched. Pass a path, a name to match against managed files, or nothing to pick from a list.
 
 ## Listing
 
 ```console
-$ casa configs list
+$ casa files list
 ```
 
 Lists every managed file with a storage badge — `(template)`, `(encrypted)`, or `(template, encrypted)` — derived from its source filename. Plain files get no badge.
 
 ## Name matching
 
-Every command that takes an optional `[name]` (`edit`, `storage`, and `untrack` when the argument isn't an existing path) resolves it the same way:
+Every command that takes an optional `[name]` (`edit`, `storage`, and `remove` when the argument isn't an existing path) resolves it the same way:
 
 - An exact match on a managed path wins.
 - A single case-insensitive substring hit opens directly (`casa edit zsh` → `~/.zshrc`).

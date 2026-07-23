@@ -19,7 +19,8 @@ var (
 	commit  = "none"
 )
 
-const usage = `casa — easy chezmoi: manage your configs and tools from one friendly menu
+const usage = `casa — make any machine feel like home
+manage your machines — files, tools, and secrets — from one git repo
 
 usage: casa [command]           (no command opens the interactive menu)
 shortcuts: casa edit [name] · casa push [msg] · casa pull · casa status
@@ -104,7 +105,7 @@ func dispatch(args []string) error {
 			return app.EditConfig(arg(args, 2))
 		case "add", "track": // track: legacy alias
 			return app.TrackFile(arg(args, 2))
-		case "remove", "untrack": // untrack: legacy alias
+		case "remove", "rm", "untrack": // rm, untrack: legacy aliases
 			return app.UntrackFile(arg(args, 2))
 		case "drift":
 			return app.Drift()
@@ -134,7 +135,7 @@ func dispatch(args []string) error {
 			return app.AddSecret(arg(args, 2))
 		case "edit":
 			return app.EditSecret(arg(args, 2))
-		case "remove":
+		case "remove", "rm": // rm: legacy alias
 			return app.RemoveSecret()
 		case "keys":
 			return app.Keys()

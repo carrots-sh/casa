@@ -34,7 +34,7 @@ nfpms:
     package_name: casa
     homepage: https://github.com/carrots-sh/casa
     maintainer: carrots-sh <hi@carrots.sh>
-    description: Interactive package manager front-end that keeps your Brewfile in sync.
+    description: Machine manager — files, tools, and secrets from one git repo. Push and pull your machines.
     license: MIT
     formats: [deb, rpm]
     bindir: /usr/bin
@@ -48,7 +48,7 @@ brews:
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     homepage: https://github.com/carrots-sh/casa
-    description: Interactive package manager front-end that keeps your Brewfile in sync.
+    description: Machine manager — files, tools, and secrets from one git repo. Push and pull your machines.
     license: MIT
     dependencies:
       - name: chezmoi
@@ -60,8 +60,8 @@ brews:
     test: |
       assert_match "casa version", shell_output("#{bin}/casa --version")
     caveats: |
-      casa drives brew, and optionally go, uv, npm, and cargo. Install whichever
-      of those you use; casa shells out to them on demand.
+      make any machine feel like home: run `casa` to set up this machine from
+      your repo, or `casa machine setup <github-user>` to point it somewhere.
 
 checksum:
   name_template: "checksums.txt"

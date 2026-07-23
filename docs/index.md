@@ -1,27 +1,31 @@
 # casa
 
-casa is an interactive front-end for [chezmoi](https://chezmoi.io). It manages
-your dotfiles, secrets, and installed tools from a single status-aware menu —
-pick, confirm, done — and every menu action is also a typed command for scripts
-and muscle memory. casa never reimplements chezmoi: it shells out to it for
-every operation, so chezmoi remains the engine and your dotfiles repo remains
-the single source of truth.
+make any machine feel like home.
+
+casa manages your machines — files, tools, and secrets — from one git repo,
+with two verbs: push and pull. One repo holds your dotfiles, one manifest
+declares every package, and your secrets travel age-encrypted with keys that
+never touch a repo. Every action lives in a status-aware interactive menu —
+pick, confirm, done — and every menu action is also a typed command for
+scripts and muscle memory.
 
 ## The promise
 
-Your repo stays a plain chezmoi repo.
+casa converges instead of accumulates, and never locks you in.
 
-- **Files work with or without casa.** Everything casa commits — dotfiles,
-  templates, encrypted files, the `.casa.toml.tmpl` questionnaire, the
-  `.casadata/packages.toml` manifest — is ordinary chezmoi content. casa
-  maintains gitignored symlinks from the casa-named special files to the names
-  chezmoi hardcodes, recreated before every chezmoi call; to use a casa repo
-  with bare chezmoi, create those three symlinks by hand once per clone.
-- **casa behavior needs casa.** Package installation on apply, the interactive
-  questionnaire, key backup and restore, and the menus are provided by the casa
-  binary — the run scripts that drive them are generated fresh from the
-  installed casa version and never committed. Without casa you keep all your
-  files; you lose the automation.
+- **One repo, three things.** Dotfiles and templates, a single
+  `.casadata/packages.toml` manifest covering brew, casks, taps, distro
+  packages, go, uv, npm, bun, cargo, and self-installing tools, and
+  age-encrypted secrets whose keys live in `~/.config/casa/keys` — plain
+  files on your machine, never in a repo.
+- **Pull actually converges.** `casa pull` pushes your changes first, reviews
+  drift, upgrades packages, and applies — and removing an entry from the
+  manifest uninstalls it on the next apply. Run scripts (package install,
+  sh-tools, key restore) are generated fresh from the installed casa binary,
+  gitignored, never committed. Repos carry only data.
+- **No lock-in.** Under the hood, [chezmoi](https://chezmoi.io) renders and
+  applies your files — and your repo stays a valid chezmoi repo, so you can
+  leave casa at any time and keep everything.
 
 See [Repository layout](repo-layout.md) for the details of this arrangement.
 
@@ -35,14 +39,14 @@ See [Repository layout](repo-layout.md) for the details of this arrangement.
 | [Tools](tools.md) | Record every installed tool in one `.casadata/packages.toml` manifest — Homebrew, casks, taps, go, uv, npm, bun, cargo, and self-installing `curl \| sh` tools. |
 | [Secrets](secrets.md) | Encrypt files with age, manage keys without a registry, back keys up to your repo, and sync them through Doppler. |
 | [Machine](machine.md) | Provision a new machine from your repo, pull, push with auto commit messages, change setup answers, undo, and run health checks. |
-| [Repository layout](repo-layout.md) | How casa maps onto chezmoi: casa-named special files, self-healing symlinks, generated run scripts, and using your repo without casa. |
+| [Repository layout](repo-layout.md) | How casa's repo format maps onto its chezmoi engine: casa-named special files, self-healing symlinks, generated run scripts, and using your repo without casa. |
 | [Reference](reference.md) | Every command, environment variable, keyboard control, and the `.casa.toml` config file. |
 | [Design](design.md) | The architecture and the reasoning behind casa's main decisions. |
 
 ## Quickstart
 
-On a brand-new machine, one line installs Homebrew if needed, installs casa,
-and offers to set everything up from your dotfiles:
+A fresh machine is one curl away from being yours. One line installs Homebrew
+if needed, installs casa, and offers to set everything up from your repo:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/carrots-sh/casa/main/install.sh | sh -s -- <your-github-username>
@@ -77,6 +81,7 @@ casa pull            # repo → this machine, pushing yours first
 casa status          # what's changed, behind, or outdated
 ```
 
-casa stores your dotfiles in `~/.local/share/casa` by default (override with
-`$CASA_SOURCE`); an existing `~/.local/share/chezmoi` setup keeps working
-unchanged. Run `casa help` for the full command listing.
+casa runs on macOS and Linux. It stores your dotfiles in
+`~/.local/share/casa` by default (override with `$CASA_SOURCE`); an existing
+`~/.local/share/chezmoi` setup keeps working unchanged. Run `casa help` for
+the full command listing.

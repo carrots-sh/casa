@@ -1,10 +1,12 @@
 # Machine lifecycle
 
-The `casa machine` commands cover the life of a machine: provision it from your
-dotfiles repo, keep it in sync, save changes back, and check its health.
+A machine is home once it has your files, your tools, and your secrets — all of
+which live in one git repo. The `casa machine` commands cover the life of a
+machine: provision it from that repo, pull to converge it, push your changes
+back, and check its health.
 
 ```console
-$ casa machine setup [repo]     # provision this machine from your dotfiles repo
+$ casa machine setup [repo]     # provision this machine from your repo
 $ casa machine pull             # repo → this machine (pushes yours first)
 $ casa machine push [message]   # your changes → repo (commit + push)
 $ casa machine status           # show what's changed, behind, or outdated
@@ -19,6 +21,15 @@ $ casa machine info             # machine + repo basics
 commands. `casa sync` and `casa save` still work as legacy aliases.
 
 ## Setup
+
+On a machine that has nothing yet, one curl is enough — it installs Homebrew if
+needed, then casa, then runs setup:
+
+```console
+$ curl -fsSL https://raw.githubusercontent.com/carrots-sh/casa/main/install.sh | sh -s -- <github-user>
+```
+
+With casa already installed:
 
 ```console
 $ casa machine setup carlos
@@ -37,9 +48,9 @@ For GitHub forms, casa prefers SSH and falls back to HTTPS. Each URL is probed
 with `git ls-remote` in a non-interactive mode (no password or host-key prompts
 can hang the check) before cloning.
 
-If `chezmoi` is not installed yet, setup offers to install it first — via
-`brew install chezmoi` when Homebrew exists, otherwise from `get.chezmoi.io`
-into `~/.local/bin`.
+Under the hood, chezmoi renders and applies your files. If it is not installed
+yet, setup offers to install it first — via `brew install chezmoi` when
+Homebrew exists, otherwise from `get.chezmoi.io` into `~/.local/bin`.
 
 ### Clone first, then init
 
@@ -93,7 +104,9 @@ difference resolves by an explicit choice:
 2. **Drift:** files changed outside casa get the keep-or-restore review
    (the same one as `casa files drift`) before the pull can apply over them.
 3. **Pull:** when brew is installed, `brew update` / `upgrade` / `cleanup`
-   run, then the repo is pulled and applied (`chezmoi update`).
+   run, then the repo is pulled and applied (`chezmoi update`). Applying
+   converges tools too: anything you removed from the package manifest is
+   uninstalled, not left behind.
 
 Restart your shell afterwards to pick up changes.
 

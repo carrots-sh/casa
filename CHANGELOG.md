@@ -4,6 +4,18 @@ casa uses **semver**: `vMAJOR.MINOR.PATCH`, newest first. (Releases before
 v0.1.0 used date-based versions, `vYYYY.MM.DD-N`; those tags and releases were
 retired when the scheme changed — their entries remain below for history.)
 
+## 0.17.0
+
+- casa has its own identity now: **make any machine feel like home** — a
+  machine manager for files, tools, and secrets, not "easy chezmoi". The
+  help header, Homebrew formula, README, and all docs carry it; chezmoi is
+  credited as the engine under the hood with the no-lock-in guarantee.
+- Agent skills grew into a suite: `casa` (overview + router), `casa-files`,
+  `casa-tools`, `casa-secrets`, `casa-machine` — detailed, source-verified,
+  installable with `bunx skills add carrots-sh/casa`.
+- `rm` works as a remove alias in every cluster (files/secrets too, not
+  just tools).
+
 ## 0.16.1
 
 - The menu got its own fzf-style widget: sections render once per cluster

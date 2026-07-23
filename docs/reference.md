@@ -9,12 +9,13 @@ interactively instead.
 
 ## Commands
 
-Running `casa` with no arguments opens the interactive menu. Every subcommand
-below is the same action, addressable for scripting.
+Running `casa` with no arguments opens the interactive menu: one flat,
+filterable list of everything below. Every subcommand is the same action,
+addressable for scripting.
 
 ```console
 $ casa help
-casa — easy chezmoi: manage your configs and tools from one friendly menu
+casa — make any machine feel like home
 
 usage: casa [command]           (no command opens the interactive menu)
 ```
@@ -26,25 +27,27 @@ The most frequent actions are available without a group prefix:
 | Command | Description |
 | --- | --- |
 | `casa` | Open the interactive menu |
-| `casa edit [name]` | Pick and edit a config (same as `casa configs edit`) |
-| `casa push [msg]` | Commit and push your changes (same as `casa machine save`) |
-| `casa pull` | Upgrade packages, then pull + apply dotfiles (same as `casa machine sync`) |
+| `casa edit [name]` | Pick and edit a file (same as `casa files edit`) |
+| `casa push [msg]` | Commit and push your changes (same as `casa machine push`) |
+| `casa pull` | Push your changes first, review drift, upgrade packages, apply (same as `casa machine pull`) |
 | `casa status` | Show what's changed, behind, or outdated (same as `casa machine status`) |
+| `casa cd` | Open a shell in your repo |
 | `casa upgrade` | Update casa itself to the latest release |
 | `casa help` | Print usage (also `-h`, `--help`) |
 | `casa version` | Print version and commit (also `-v`, `--version`) |
 
-### `casa configs`
+### `casa files`
 
-Manage tracked configuration files. See [Configs](configs.md).
+Manage tracked files. See [Files](configs.md).
 
 | Command | Description |
 | --- | --- |
-| `casa configs edit [name]` | Pick and edit a config; encrypted ones are handled transparently |
-| `casa configs track [path]` | Start managing an existing file (plain, template, or encrypted) |
-| `casa configs storage [name]` | Change how a file is stored (template/encrypted/…) |
-| `casa configs untrack [path]` | Stop managing a file (keeps it on disk) |
-| `casa configs list` | List managed files |
+| `casa files edit [name]` | Pick and edit a file; encrypted ones are handled transparently |
+| `casa files add [path]` | Start managing an existing file (plain, template, or encrypted) |
+| `casa files drift` | Review differences between the repo and what's on this machine |
+| `casa files storage [name]` | Change how a file is stored (template/encrypted/…) |
+| `casa files remove [path]` | Stop managing a file (keeps it on disk) |
+| `casa files list` | List managed files |
 
 ### `casa tools`
 
@@ -55,7 +58,7 @@ Manage installed tools through the package manifest. See [Tools](tools.md).
 | `casa tools add [manager] [name]` | Install a tool and record it in your manifest |
 | `casa tools add sh` | Add a tool that ships its own installer (`curl \| sh`) |
 | `casa tools add cmd ["command"]` | Paste any install command — casa detects the manager |
-| `casa tools rm` | Uninstall tool(s) — pick across all managers |
+| `casa tools remove` | Uninstall tool(s) — pick across all managers |
 | `casa tools update` | Upgrade outdated tools — one, many, or all |
 | `casa tools list` | List recorded tools |
 | `casa tools import` | Seed the manifest from what's installed here |
@@ -69,6 +72,7 @@ Manage encrypted files and age keys. See [Secrets](secrets.md).
 | --- | --- |
 | `casa secrets add [path]` | Encrypt and start managing a file |
 | `casa secrets edit [name]` | Pick a secret, decrypt, edit, re-encrypt |
+| `casa secrets remove` | Stop managing an encrypted file |
 | `casa secrets keys` | Encryption keys — create, default, delete, doppler |
 | `casa secrets list` | List encrypted files |
 
@@ -78,13 +82,13 @@ Machine-level operations. See [Machine](machine.md).
 
 | Command | Description |
 | --- | --- |
-| `casa machine setup [repo]` | Provision this machine from your dotfiles repo |
-| `casa machine sync` | Upgrade packages, then pull + apply dotfiles |
-| `casa machine save [message]` | Commit + push your changes |
+| `casa machine setup [repo]` | Provision this machine from your repo |
+| `casa machine pull` | Push your changes first, review drift, upgrade packages, apply |
+| `casa machine push [message]` | Commit + push your changes |
 | `casa machine status` | Show what's changed, behind, or outdated |
 | `casa machine answers [name]` | Change this machine's setup answers and re-apply |
 | `casa machine question` | Add a setup question to your repo |
-| `casa machine undo` | Revert the last saved change and re-apply |
+| `casa machine undo` | Revert the last pushed change and re-apply |
 | `casa machine doctor` | Health check |
 | `casa machine info` | Machine + repo basics |
 
@@ -94,7 +98,9 @@ argument, it uses `[setup].repo` from `.casa.toml` (see below), then prompts.
 
 !!! note
 
-    `casa machine context` is accepted as a legacy alias for
+    Legacy aliases are accepted everywhere: `save` = `push`, `sync` = `pull`,
+    `configs` = `files`, `track` = `add`, `untrack` = `remove`,
+    `rm` = `remove`. `casa machine context` is a legacy alias for
     `casa machine answers`.
 
 An unknown command prints the usage text and exits with status 1.
@@ -103,7 +109,7 @@ An unknown command prints the usage text and exits with status 1.
 
 ### `CASA_SOURCE`
 
-Overrides the source directory (where your dotfiles repo lives). Without it,
+Overrides the source directory (where your repo lives). Without it,
 casa resolves the source directory in order:
 
 1. `$CASA_SOURCE`, if set.
@@ -129,8 +135,9 @@ sandboxed environments that deliberately mask package managers via `PATH`.
 ### `EDITOR`
 
 `casa secrets edit` opens the decrypted content in `$EDITOR`, falling back to
-`vi` when unset. `casa configs edit` runs `chezmoi edit --apply`, which
-follows chezmoi's own editor resolution (also `$EDITOR`-based).
+`vi` when unset. `casa files edit` runs `chezmoi edit --apply` — chezmoi is
+the rendering engine under the hood — which follows chezmoi's own editor
+resolution (also `$EDITOR`-based).
 
 ### `GOBIN` and `BUN_INSTALL`
 
@@ -190,8 +197,9 @@ Additional per-prompt keys:
 
 ## The `.casa.toml` file
 
-An optional, committed file at the root of your source directory. casa works
-against any chezmoi repo without it — every key has a default.
+An optional, committed file at the root of your source directory. Every key
+has a default — casa works without it, including against an existing chezmoi
+repo (your repo stays a valid chezmoi repo either way).
 
 ```toml
 [pkg]

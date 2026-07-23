@@ -1,15 +1,17 @@
 # Tools
 
-casa records every tool you install in a single manifest,
-`.casadata/packages.toml`, committed in your dotfiles repo. On every machine,
-applying your dotfiles installs what the manifest lists and uninstalls what you
-removed — the manifest is the single source of truth for what's on a machine.
+Tools are one of the three things casa manages from your repo, alongside files
+and secrets. Every tool you install — brew, distro, go, uv, npm, bun, cargo —
+is recorded in a single manifest, `.casadata/packages.toml`, committed in your
+repo. On every machine, applying converges to the manifest: it installs what
+the manifest lists and uninstalls what you removed. The manifest is the single
+source of truth for what's on a machine.
 
 ```bash
 casa tools add [manager] [name]   # install a tool and record it
 casa tools add sh                 # a tool that ships its own installer (curl | sh)
 casa tools add cmd ["command"]    # paste any install command — casa detects the manager
-casa tools rm                     # uninstall tool(s) — pick across all managers
+casa tools remove                 # uninstall tool(s) — pick across all managers
 casa tools update                 # upgrade outdated tools — one, many, or all
 casa tools list                   # list recorded tools
 casa tools import                 # seed the manifest from what's installed here
@@ -22,7 +24,8 @@ Every command that changes the manifest ends by offering to commit and push
 ## The manifest
 
 The manifest lives at `.casadata/packages.toml` in your source directory.
-chezmoi reads it through the `.chezmoidata` mirror symlink that casa maintains
+Under the hood, chezmoi — casa's rendering engine — reads it through the
+`.chezmoidata` mirror symlink that casa maintains
 (see [Repository layout](repo-layout.md)); repos that already have a real `.chezmoidata`
 directory keep using `.chezmoidata/packages.toml` instead.
 
@@ -119,7 +122,7 @@ Section notes:
   `brew_darwin`, `cask`, and `extra_darwin` only render on macOS.
 - `extra` and `extra_darwin` are raw Brewfile lines passed through verbatim.
   Use them for anything needing arguments casa's flat lists can't express.
-  casa's `add`/`rm` never touch them, but they still count as recorded for
+  casa's `add`/`remove` never touch them, but they still count as recorded for
   drift detection, so a hand-managed `brew "ruby", link: false` never shows up
   in `casa tools import` as an unrecorded `ruby`.
 - `system` entries install via the machine's distro package manager (apt, dnf,
@@ -136,7 +139,8 @@ Section notes:
 
 ## What happens on apply
 
-The manifest is data, not a script. Before every chezmoi call, casa generates
+The manifest is data, not a script. Repos carry only data: before every call
+to chezmoi (the engine that renders and applies your files), casa generates
 two `run_onchange` scripts in the source directory — gitignored, never
 committed — from templates embedded in the installed casa binary:
 
@@ -166,7 +170,7 @@ Two safeguards apply:
 `bun` globals are the exception — brew bundle can't manage them, so the script
 re-asserts the list with an idempotent `bun add -g` loop (only when `bun` is
 installed). There is no cleanup diffing for bun: removing a bun entry by hand
-also needs a manual `bun remove -g`, which `casa tools rm` does for you.
+also needs a manual `bun remove -g`, which `casa tools remove` does for you.
 
 The sh-tools script runs each `[[packages.sh]]` installer behind a
 `command -v` guard, so re-runs are free and the script is idempotent. Blocks
@@ -255,7 +259,7 @@ Declining still installs the tool; it just isn't recorded.
 
 ## Removing tools
 
-`casa tools rm` shows one flat multi-select of everything recorded across all
+`casa tools remove` shows one flat multi-select of everything recorded across all
 managers. For each pick, casa uninstalls via the owning manager and removes
 the manifest entry (if the uninstall errors, the entry is removed anyway). For
 sh tools, casa removes the `[[packages.sh]]` block and — since the installer,

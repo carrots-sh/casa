@@ -1,7 +1,8 @@
 # Installation
 
-casa is a single static binary. There are four ways to install it; pick the one
-that matches your situation.
+casa manages your machines — files, tools, and secrets — from one git repo. It
+ships as a single static binary, and there are four ways to install it; pick
+the one that matches your situation.
 
 | Method | When to use it |
 | --- | --- |
@@ -10,16 +11,16 @@ that matches your situation.
 | [Release binaries](#release-binaries) | No Homebrew, servers, containers, or `.deb`/`.rpm` systems |
 | [go install](#go-install) | You have a Go toolchain and want to build from source |
 
-casa drives [chezmoi](https://chezmoi.io) and never reimplements it, so chezmoi
-must be installed too. The Homebrew formula declares chezmoi as a dependency,
-and `casa machine setup` installs chezmoi itself when it is missing (via
-Homebrew, or `get.chezmoi.io` as a fallback) — so in practice you rarely
-install it by hand.
+Under the hood, [chezmoi](https://chezmoi.io) renders and applies your files,
+so chezmoi must be installed too. The Homebrew formula declares chezmoi as a
+dependency, and `casa machine setup` installs chezmoi itself when it is
+missing (via Homebrew, or `get.chezmoi.io` as a fallback) — so in practice you
+rarely install it by hand.
 
 ## Bootstrap script
 
-The one-liner for a brand-new machine. It installs Homebrew if missing, then
-casa from the Homebrew tap:
+A fresh machine is one curl away from being yours. The one-liner installs
+Homebrew if missing, then casa from the Homebrew tap:
 
 ```console
 $ curl -fsSL https://raw.githubusercontent.com/carrots-sh/casa/main/install.sh | sh
@@ -42,7 +43,8 @@ The script does three things, in order:
    install Homebrew.
 2. Runs `brew install carrots-sh/tap/casa`.
 3. If you passed an argument, runs `casa machine setup <arg>` to clone your
-   dotfiles and set up the machine. See [Machine setup](machine.md).
+   repo, ask your setup questions, and apply everything — files, tools, and
+   secrets. See [Machine setup](machine.md).
 
 Use this on macOS or Linux when you are starting from nothing. If Homebrew is
 already installed, the script skips straight to installing casa.
@@ -56,9 +58,10 @@ $ brew install carrots-sh/tap/casa
 ```
 
 The formula depends on `chezmoi` (required) and `git` (optional), so a plain
-`brew install` gives you everything casa needs for its core workflow. casa can
-also drive `go`, `uv`, `npm`, `bun`, and `cargo` for tool management — install
-whichever of those you use; casa shells out to them on demand.
+`brew install` gives you everything casa needs for its core workflow. casa's
+package manifest also covers `go`, `uv`, `npm`, `bun`, and `cargo` tools —
+install whichever of those managers you use; casa shells out to them on
+demand.
 
 ## Release binaries
 
@@ -84,8 +87,9 @@ instead; those place the binary at `/usr/bin/casa`. Each release also ships a
 `checksums.txt` for verification.
 
 Binaries are static (`CGO_ENABLED=0`), so they run on any machine of the right
-OS and architecture with no runtime dependencies. Remember that chezmoi is
-still required for config management — releases only contain casa itself.
+OS and architecture with no runtime dependencies. Remember that chezmoi — the
+engine casa uses to render and apply your files — is still required; releases
+only contain casa itself.
 
 ## go install
 
