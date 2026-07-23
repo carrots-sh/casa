@@ -1,6 +1,6 @@
 ---
 name: casa-files
-description: Manage files with casa — the machine manager that keeps dotfiles, tools, and secrets in one git repo with two verbs, push and pull. Covers casa files add/edit/list/remove/storage/drift: storage kinds (plain, template, encrypted) and add's heuristics, source-name mapping (dot_zshrc, .tmpl, encrypted_*.age), the agent-safe edit flow (edit source, targeted apply, casa push), drift review (keep/restore/skip), questionnaire template data, and .casaignore gating. Use when tracking, editing, or reconciling dotfiles in a casa repo. Skip for tools/secrets/machine-setup work or non-casa repos.
+description: Manage files with casa — the machine manager that keeps dotfiles, tools, and secrets in one git repo with two verbs, push and pull. Covers casa files add/edit/list/remove/storage/drift — storage kinds (plain, template, encrypted) and add's heuristics, source-name mapping (dot_zshrc, .tmpl, encrypted_*.age), the agent-safe edit flow (edit source, targeted apply, casa push), drift review (keep/restore/skip), questionnaire template data, and .casaignore gating. Use when tracking, editing, or reconciling dotfiles in a casa repo. Skip for tools/secrets/machine-setup work or non-casa repos.
 license: MIT
 ---
 
