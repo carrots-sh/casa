@@ -1,6 +1,6 @@
 ---
 name: casa-machine
-description: Operate casa's machine lifecycle — provision, converge, and maintain a Mac or Linux box from its git repo. Covers the fresh-machine curl bootstrap, casa machine setup (clone-first, setup questionnaire), full push/pull semantics, status fields, answers/question/undo/doctor/info (plus top-level casa cd), and step-by-step VPS provisioning with passphrase key restore. Use when setting up a new machine or server from a casa repo, syncing (push/pull/status), changing setup answers, authoring questions, or diagnosing casa health. Skip for day-to-day file/tool/secret edits (see the casa skill) and non-casa repos.
+description: Operate casa's machine lifecycle — provision, converge, and maintain a Mac or Linux box from its git repo. Covers the fresh-machine curl bootstrap, casa machine setup (clone-first, setup questionnaire), full push/pull semantics, status fields, answers/question/undo/doctor/info (plus top-level casa cd), and step-by-step VPS provisioning with passphrase key restore. Use when provisioning a machine or server from a casa repo, syncing (push/pull/status), changing answers, or diagnosing casa health. Skip for day-to-day file/tool/secret edits (see the casa skill) and non-casa repos.
 license: MIT
 ---
 
